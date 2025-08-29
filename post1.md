@@ -1,3 +1,6 @@
+* TOC
+{:toc}
+
 # Basic performance tricks for porting kernels to the GPU.
 
 ## Some context and motivations
@@ -7,14 +10,14 @@ Hello world! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a resear
  
 **The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.** 
 
-The goal of this blogpost is to give you basic, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. 
+The goal of this blogpost is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. 
 
 By applying them, I was able to get:
 - A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstruous kernel.
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp)
  - TODO: add ncu reports
 
-By *reasonable* I do not mean that you are getting *optimal* perfomance. In fact, I will not go over what I consider to be *advanced* optimization tricks such as the use of [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s) or [vectorized operations](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/). By *advanced*, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enought so that you can and should apply them straightforwardly while porting your code to the GPU in a time limited environement.
+By *reasonable* I do not mean that you are getting *optimal* perfomance. In fact, I will not go over what I consider to be *advanced* optimization tricks such as the use of [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s), [vectorized operations](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) or launch bound tuning [link]. By *advanced*, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enought so that you can and should apply them straightforwardly while porting your code to the GPU in a time limited environement. I will not go ninto GPU specicif opti [link], the advices are basic enoiugh so that they should beneif on all cards
 
 ## Disclaimer & Requirements
 ### Disclaimers
@@ -53,7 +56,8 @@ In this small tutorial, I will assume that you are already familiar with:
 1. Use the basic functionnalities of nsight compute.
    1. Lancer depuis un cluster, read en local, commande pour un kernel kokkos.
 2. Minimuse redundant global memory accesses.
-   1. James demmel stuff
+   1. Comm vs comp photo demmel
+   2. James demmel stuff
    3. accumulateur
    4. tableaux statiques
    5. in ncu
@@ -68,9 +72,14 @@ In this small tutorial, I will assume that you are already familiar with:
 5. Avoid the use of *Local memory* by removing:
    1. Register spilling
    2. accidental stack usage
+      1. Accés statiques aux tableaux statiques. Cad avoir des bornes de boucles connues au compile time quand on accède à des tableaux statique dedans. Ca implique aussi des switch moches parfois quand on a le pattern y=face[x] avec x pas connu au compile time mais très très important pour la perf.
    3. in ncu, avec les options de compil
-6. Understanding occupancy, and when to worry about it
-7. Avoid thread divergence
+6. Understanding occupancy, and when to worry about it:
+   1. latency hiding
+   2. The occupancy trap, ILP
+   3. Pas de MDRange: moins de pression sur les registres
+7. Avoid thread divergence:
+   1. Templater les paramètres qui change bcp l'execution. bien aussi pour l'occupancy !!
 
 
 ## Final advices
