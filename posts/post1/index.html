@@ -173,18 +173,22 @@
 <li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU)</li>
 <li>TODO: add ncu reports</li>
 </ul>
-<p>By <em>reasonable</em> I do not mean that you will get <em>optimal</em> performance. In fact, I will not go over what I consider to be <em>advanced</em> optimization tricks such as the use of 
-- <a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, 
-- <a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a>,
-- <a href="https://developer.nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,
-- <a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </p>
+<p>By <em>reasonable</em> I do not mean that you will get <em>optimal</em> performance. In fact, I will not go over what I consider to be <em>advanced</em> optimization tricks such as the use of </p>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, </li>
+<li><a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a>,</li>
+<li><a href="https://developer.nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,</li>
+<li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </li>
+</ul>
 <p>If getting  <em>optimal</em> performance is crucial to your application, consider learning more and apply these, but keep in mind that <strong>performance often comes at the cost of portability</strong>.
 The advices are general enough so that they should allow speedups on all cards from all vendors.  By <em>advanced</em>, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enough so that you can, and should apply them straightforwardly while porting your code to the GPU in a time limited environement. </p>
-<p><strong>Note 1:</strong> The target audience is engineer / researcher that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, hihgly optimized and distributed in libraries. Consider looking into (non exhaustive list !):
-- <a href="https://docs.nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.
-- <a href="https://github.com/kokkos/kokkos-kernels">kokkos kernels</a> for portable BLAS, sparse BLAS and fraph kernels.
-- <a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.
-- <a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs)</p>
+<p><strong>Note 1:</strong> The target audience is engineer / researcher that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, hihgly optimized and distributed in libraries. Consider looking into (non exhaustive list !):</p>
+<ul>
+<li><a href="https://docs.nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
+<li><a href="https://github.com/kokkos/kokkos-kernels">kokkos kernels</a> for portable BLAS, sparse BLAS and fraph kernels.</li>
+<li><a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.</li>
+<li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs)</li>
+</ul>
 <p><strong>Note 2:</strong> If you don't care about the why's and want to jumpt straight into the How's, go straight into them with the side menu !</p>
 <h2 id="disclaimer-requirements">Disclaimer &amp; Requirements</h2>
 <h3 id="disclaimers">Disclaimers</h3>
