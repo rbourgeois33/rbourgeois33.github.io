@@ -94,47 +94,55 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="basic-performance-tricks-for-porting-kernels-to-the-gpu">Basic performance tricks for porting kernels to the GPU.<a class="headerlink" href="#basic-performance-tricks-for-porting-kernels-to-the-gpu" title="Permanent link">&para;</a></h1>
-<h2 id="some-context-and-motivations">Some context and motivations<a class="headerlink" href="#some-context-and-motivations" title="Permanent link">&para;</a></h2>
+                <h1 id="basic-performance-tricks-for-porting-kernels-to-the-gpu">Basic performance tricks for porting kernels to the GPU.</h1>
+<h2 id="some-context-and-motivations">Some context and motivations</h2>
 <p>Hello world! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a researcher engineer working at the French Atomic Energy Comission (CEA). I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC (multi-GPU) CFD code that serves as a basis for many research/industrial applications.</p>
 <p>I was hired by CEA to join the porting effort of this legacy code to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! As I went and optimized some kernels, something struck me:</p>
-<p><strong>The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong> </p>
-<p>The goal of this blogpost is to give you <em>basic</em>, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a <em>reasonable</em> performance. </p>
-<p>By applying them, I was able to get:
-- A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstruous kernel.
-- A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
-- A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a>
- - TODO: add ncu reports
- - A</p>
+<p><strong>The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong></p>
+<p>The goal of this blogpost is to give you <em>basic</em>, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a <em>reasonable</em> performance.</p>
+<p>By applying them, I was able to get:</p>
+<ul>
+<li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstruous kernel.</li>
+<li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
+<li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a></li>
+<li>TODO: add ncu reports</li>
+<li>A</li>
+</ul>
 <p>By <em>reasonable</em> I do not mean that you are getting <em>optimal</em> perfomance. In fact, I will not go over what I consider to be <em>advanced</em> optimization tricks such as the use of <a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, <a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a> orlaunch bound tuning [link]. By <em>advanced</em>, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enough so that you can and should apply them straightforwardly while porting your code to the GPU in a time limited environement. Moreover, I will not go into GPU model-specific optimizations [link elfarou], the advices are basic enough so that they should beneif on all cards.</p>
-<h2 id="disclaimer-requirements">Disclaimer &amp; Requirements<a class="headerlink" href="#disclaimer-requirements" title="Permanent link">&para;</a></h2>
-<h3 id="disclaimers">Disclaimers<a class="headerlink" href="#disclaimers" title="Permanent link">&para;</a></h3>
+<h2 id="disclaimer-requirements">Disclaimer &amp; Requirements</h2>
+<h3 id="disclaimers">Disclaimers</h3>
 <p>If you think I wrote something that is wrong, please let me know !</p>
 <p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.nvidia.com/nsight-systems">nsight systems</a> (nsys) and <a href="https://developer.nvidia.com/nsight-compute">nsight compute</a> (ncu). However, note that AMD provides similar profilers, and that the advices that I give here are simple enought so that they apply for GPUs from both vendors.</p>
 <p>Moreover, I will use Kokkos as the programming model, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate it to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
-<h3 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h3>
-<p>In this small tutorial, I will assume that you are already familiar with:
-- Basic C++.
-- The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.
-- What is Kokkos, why you want to use it and how to use it. Some ressources:
-  - <a href="https://www.youtube.com/watch?v=y3HHBl4kV7g">Talk by Christian Trott, Co-leader of the Kokkos core team</a>. 
-  - <a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, but you can find a lot of ressources online, alos, join the slack !).
-  - <strong>Note:</strong> you really <em>should</em> consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see <a href="https://cexa-project.org/">the CExA project</a>).
-- Basic GPU architecture, in particular:
-  - That you should avoid host to device memory transfers.
-  - The roofline performance model.
-  - What does compute bound / memory bound mean.
-  - Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.
-  - Some ressources:
-    - <a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture from Athena Elfarou on GPU architecture / CUDA programming</a>
-    -  <a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures on CUDA programming by Bob Crovella</a>
- - Application-level optimization:
-   - How to build a sensible optimization roadmap.
-   - How to ensure that it is worth it to optimize the kernel you are looking (Don't assume bottleneck, profile, assess, optimize).
-   - How to use Nvidia Nsight System
-   - Some ressouces:
-     - <a href="https://www.youtube.com/watch?v=nhTjq0P9uc8&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&amp;index=8">8th lecture from the Bob Crovella lecture series</a> which focuses on that topic.</p>
-<h2 id="outline">Outline<a class="headerlink" href="#outline" title="Permanent link">&para;</a></h2>
+<h3 id="requirements">Requirements</h3>
+<p>In this small tutorial, I will assume that you are already familiar with:</p>
+<ul>
+<li>Basic C++.</li>
+<li>The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.</li>
+<li>What is Kokkos, why you want to use it and how to use it. Some ressources:</li>
+<li><a href="https://www.youtube.com/watch?v=y3HHBl4kV7g">Talk by Christian Trott, Co-leader of the Kokkos core team</a>.</li>
+<li><a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, but you can find a lot of ressources online, alos, join the slack !).</li>
+<li><strong>Note:</strong> you really <em>should</em> consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see <a href="https://cexa-project.org/">the CExA project</a>).</li>
+<li>Basic GPU architecture, in particular:</li>
+<li>That you should avoid host to device memory transfers.</li>
+<li>The roofline performance model.</li>
+<li>What does compute bound / memory bound mean.</li>
+<li>Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.</li>
+<li>Some ressources:<ul>
+<li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture from Athena Elfarou on GPU architecture / CUDA programming</a></li>
+<li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures on CUDA programming by Bob Crovella</a></li>
+</ul>
+</li>
+<li>Application-level optimization:</li>
+<li>How to build a sensible optimization roadmap.</li>
+<li>How to ensure that it is worth it to optimize the kernel you are looking (Don't assume bottleneck, profile, assess, optimize).</li>
+<li>How to use Nvidia Nsight System</li>
+<li>Some ressouces:<ul>
+<li><a href="https://www.youtube.com/watch?v=nhTjq0P9uc8&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&amp;index=8">8th lecture from the Bob Crovella lecture series</a> which focuses on that topic.</li>
+</ul>
+</li>
+</ul>
+<h2 id="outline">Outline</h2>
 <ol>
 <li>Use the basic functionnalities of nsight compute.</li>
 <li>Lancer depuis un cluster, read en local, commande pour un kernel kokkos.</li>
@@ -166,7 +174,7 @@
 <li>Avoid thread divergence:</li>
 <li>Templater les paramètres qui change bcp l'execution. bien aussi pour l'occupancy !!</li>
 </ol>
-<h2 id="final-advices">Final advices<a class="headerlink" href="#final-advices" title="Permanent link">&para;</a></h2>
+<h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
               
             </div>
