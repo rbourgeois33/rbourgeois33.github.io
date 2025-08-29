@@ -94,8 +94,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="basic-performance-tricks-for-porting-kernels-to-the-gpu">Basic performance tricks for porting kernels to the GPU.</h1>
-<h2 id="some-context-and-motivations">Some context and motivations</h2>
+                <h1 id="basic-performance-tricks-for-porting-kernels-to-the-gpu">Basic performance tricks for porting kernels to the GPU.<a class="headerlink" href="#basic-performance-tricks-for-porting-kernels-to-the-gpu" title="Permanent link">&para;</a></h1>
+<h2 id="some-context-and-motivations">Some context and motivations<a class="headerlink" href="#some-context-and-motivations" title="Permanent link">&para;</a></h2>
 <p>Hello world! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a researcher engineer working at the French Atomic Energy Comission (CEA). I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC (multi-GPU) CFD code that serves as a basis for many research/industrial applications.</p>
 <p>I was hired by CEA to join the porting effort of this legacy code to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! As I went and optimized some kernels, something struck me:</p>
 <p><strong>The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong> </p>
@@ -107,12 +107,12 @@
  - TODO: add ncu reports
  - A</p>
 <p>By <em>reasonable</em> I do not mean that you are getting <em>optimal</em> perfomance. In fact, I will not go over what I consider to be <em>advanced</em> optimization tricks such as the use of <a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, <a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a> orlaunch bound tuning [link]. By <em>advanced</em>, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enough so that you can and should apply them straightforwardly while porting your code to the GPU in a time limited environement. Moreover, I will not go into GPU model-specific optimizations [link elfarou], the advices are basic enough so that they should beneif on all cards.</p>
-<h2 id="disclaimer-requirements">Disclaimer &amp; Requirements</h2>
-<h3 id="disclaimers">Disclaimers</h3>
+<h2 id="disclaimer-requirements">Disclaimer &amp; Requirements<a class="headerlink" href="#disclaimer-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="disclaimers">Disclaimers<a class="headerlink" href="#disclaimers" title="Permanent link">&para;</a></h3>
 <p>If you think I wrote something that is wrong, please let me know !</p>
 <p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.nvidia.com/nsight-systems">nsight systems</a> (nsys) and <a href="https://developer.nvidia.com/nsight-compute">nsight compute</a> (ncu). However, note that AMD provides similar profilers, and that the advices that I give here are simple enought so that they apply for GPUs from both vendors.</p>
 <p>Moreover, I will use Kokkos as the programming model, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate it to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
-<h3 id="requirements">Requirements</h3>
+<h3 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h3>
 <p>In this small tutorial, I will assume that you are already familiar with:
 - Basic C++.
 - The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.
@@ -134,7 +134,7 @@
    - How to use Nvidia Nsight System
    - Some ressouces:
      - <a href="https://www.youtube.com/watch?v=nhTjq0P9uc8&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&amp;index=8">8th lecture from the Bob Crovella lecture series</a> which focuses on that topic.</p>
-<h2 id="outline">Outline</h2>
+<h2 id="outline">Outline<a class="headerlink" href="#outline" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Use the basic functionnalities of nsight compute.</li>
 <li>Lancer depuis un cluster, read en local, commande pour un kernel kokkos.</li>
@@ -166,7 +166,7 @@
 <li>Avoid thread divergence:</li>
 <li>Templater les paramètres qui change bcp l'execution. bien aussi pour l'occupancy !!</li>
 </ol>
-<h2 id="final-advices">Final advices</h2>
+<h2 id="final-advices">Final advices<a class="headerlink" href="#final-advices" title="Permanent link">&para;</a></h2>
 <p>Participate to hackathons !</p>
               
             </div>
