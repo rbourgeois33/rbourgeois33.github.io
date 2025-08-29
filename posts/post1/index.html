@@ -119,11 +119,13 @@
 <ul>
 <li>Basic C++.</li>
 <li>The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.</li>
-<li>What is Kokkos, why you want to use it and how to use it. Some ressources:</li>
+<li>What is Kokkos, why you want to use it and how to use it. Some ressources:<ul>
 <li><a href="https://www.youtube.com/watch?v=y3HHBl4kV7g">Talk by Christian Trott, Co-leader of the Kokkos core team</a>.</li>
 <li><a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, but you can find a lot of ressources online, alos, join the slack !).</li>
 <li><strong>Note:</strong> you really <em>should</em> consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see <a href="https://cexa-project.org/">the CExA project</a>).</li>
-<li>Basic GPU architecture, in particular:</li>
+</ul>
+</li>
+<li>Basic GPU architecture, in particular:<ul>
 <li>That you should avoid host to device memory transfers.</li>
 <li>The roofline performance model.</li>
 <li>What does compute bound / memory bound mean.</li>
@@ -133,7 +135,9 @@
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures on CUDA programming by Bob Crovella</a></li>
 </ul>
 </li>
-<li>Application-level optimization:</li>
+</ul>
+</li>
+<li>Application-level optimization:<ul>
 <li>How to build a sensible optimization roadmap.</li>
 <li>How to ensure that it is worth it to optimize the kernel you are looking (Don't assume bottleneck, profile, assess, optimize).</li>
 <li>How to use Nvidia Nsight System</li>
@@ -142,37 +146,53 @@
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 <h2 id="outline">Outline</h2>
 <ol>
-<li>Use the basic functionnalities of nsight compute.</li>
+<li>Use the basic functionnalities of nsight compute.<ol>
 <li>Lancer depuis un cluster, read en local, commande pour un kernel kokkos.</li>
-<li>Minimuse redundant global memory accesses.</li>
+</ol>
+</li>
+<li>Minimuse redundant global memory accesses.<ol>
 <li>Comm vs comp photo demmel</li>
 <li>James demmel stuff</li>
 <li>accumulateur</li>
 <li>tableaux statiques</li>
 <li>in ncu</li>
-<li>Ensure memory access are coalesced.</li>
+</ol>
+</li>
+<li>Ensure memory access are coalesced.<ol>
 <li>Sectors/cache line</li>
 <li>Layout (Kokkos Layout consipracy)</li>
 <li>in ncu</li>
-<li>Minimize redundant math operation, use cheap arithmetics.</li>
+</ol>
+</li>
+<li>Minimize redundant math operation, use cheap arithmetics.<ol>
 <li>FMA</li>
 <li>/ vs *</li>
 <li>in ncu</li>
-<li>Avoid the use of <em>Local memory</em> by removing:</li>
+</ol>
+</li>
+<li>Avoid the use of <em>Local memory</em> by removing:<ol>
 <li>Register spilling</li>
 <li>accidental stack usage<ol>
 <li>Accés statiques aux tableaux statiques. Cad avoir des bornes de boucles connues au compile time quand on accède à des tableaux statique dedans. Ca implique aussi des switch moches parfois quand on a le pattern y=face[x] avec x pas connu au compile time mais très très important pour la perf.</li>
 </ol>
 </li>
 <li>in ncu, avec les options de compil</li>
-<li>Understanding occupancy, and when to worry about it:</li>
+</ol>
+</li>
+<li>Understanding occupancy, and when to worry about it:<ol>
 <li>latency hiding</li>
 <li>The occupancy trap, ILP</li>
 <li>Pas de MDRange: moins de pression sur les registres</li>
-<li>Avoid thread divergence:</li>
+</ol>
+</li>
+<li>Avoid thread divergence:<ol>
 <li>Templater les paramètres qui change bcp l'execution. bien aussi pour l'occupancy !!</li>
+</ol>
+</li>
 </ol>
 <h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
