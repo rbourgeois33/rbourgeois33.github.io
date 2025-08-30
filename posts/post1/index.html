@@ -65,9 +65,9 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#minimise-redundant-global-memory-accesses">Minimise redundant global memory accesses</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#what-to-look-for-in-ncu">What to look for in ncu</a>
+    <li class="toctree-l3"><a class="reference internal" href="#why-the-cost-of-memory-transfers">Why: the cost of memory transfers</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#why-the-cost-of-communications">Why: the cost of communications</a>
+    <li class="toctree-l3"><a class="reference internal" href="#what-to-look-for-in-ncu">What to look for in ncu</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#how-use-register-variables">How: use register variables</a>
     </li>
@@ -230,6 +230,7 @@ The advices are general enough so that they should allow speedups on all cards f
 </li>
 </ul>
 <h2 id="outline">Outline</h2>
+<p>The outline for this post is the following:</p>
 <ol>
 <li>Minimise redundant global memory accesses.</li>
 <li>Ensure memory access are coalesced.</li>
@@ -238,10 +239,63 @@ The advices are general enough so that they should allow speedups on all cards f
 <li>Avoid the use of <em>Local memory</em>.</li>
 <li>Avoid thread divergence.</li>
 </ol>
+<p>For each topic, I will provide:
+- An explanation of why you need to worry about it,
+- How to detect that it is limiting your kernel performance using ncu,
+- How to fix the issue</p>
 <h2 id="minimise-redundant-global-memory-accesses">Minimise redundant global memory accesses</h2>
+<h3 id="why-the-cost-of-memory-transfers">Why: the cost of memory transfers</h3>
+<p>Looking at Figure 1, memory transfers, either within DRAM, or over the network, has been more expensive than (FP64) math operation since ~1992:
+<img alt=" " src="../image.png" />
+<strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwitdh (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
+<p>The graph stops around 2015, where the ratio of time per flop to bandwith time-scale was around 10. Let's look at the ratio of Flops to Bandwith for recent Nvidia GPUs:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">GPU</th>
+<th style="text-align: right;">Release Year</th>
+<th style="text-align: right;">FP64 FLOPS (TFLOPS)</th>
+<th style="text-align: right;">BW (TB/s)</th>
+<th style="text-align: right;">FLOPs per Double</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/tesla-v100-pcie-16-gb.c2957">V100</a></td>
+<td style="text-align: right;">2017</td>
+<td style="text-align: right;">7.066</td>
+<td style="text-align: right;">0.897</td>
+<td style="text-align: right;">~65.19</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/a100-pcie-40-gb.c3623">A100</a></td>
+<td style="text-align: right;">2020</td>
+<td style="text-align: right;">9.746</td>
+<td style="text-align: right;">1.56</td>
+<td style="text-align: right;">~49.9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/h100-pcie-80-gb.c3899">H100</a></td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">25.61</td>
+<td style="text-align: right;">2.04</td>
+<td style="text-align: right;">~ 100</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210">B200</a></td>
+<td style="text-align: right;">2024</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">8.20</td>
+<td style="text-align: right;">~60</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 1:</strong> Evolution of the BW, FP64 flops and Flops per double for recent Nvidia GPU models. Last row is computed as $\frac{FP64 \ Flops}{BW}*8(bytes)$.</p>
+<p>I think it is illuminating to look at the value in the last row. It represents the average amount of FP64 operation you can do in the time that it takes to load one FP64 word. As we can see, it has been oscillating between 50 and 100. This should motivate you to think really hard about how you access memory.</p>
+<p>In fact, "communication avoiding algorithms" has been a very active and fruitful research area which lead to the development of the BLAS standard, the Lapack library, and much more. Here is a <a href="https://www.youtube.com/watch?v=sY3bgirw--4">brilliant introductory</a> lecture on that topic by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">webpage his CS267 class</a> with free lectures on Youtube. </p>
+<p>It is so important in fact that researchers have been computing theoretical bounds for the computational intensity of crucial algorithm, and worked hard to design such bound attaining programs.</p>
+<p>The bottom line is, you should make good use of the word you read from slow memory (DRAM) into fast memory (caches, registers), and avoid redundant read/writes.</p>
 <h3 id="what-to-look-for-in-ncu">What to look for in ncu</h3>
-<h3 id="why-the-cost-of-communications">Why: the cost of communications</h3>
-<p>Comm vs comp photo demmel, James demmel stuff</p>
 <h3 id="how-use-register-variables">How: use register variables</h3>
 <ul>
 <li>static array, might need to template</li>
