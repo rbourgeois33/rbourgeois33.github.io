@@ -248,7 +248,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <p>Looking at Figure 1, memory transfers, either within DRAM, or over the network, has been more expensive than (FP64) math operation since ~1992:
 <img alt=" " src="../image.png" />
 <strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwitdh (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
-<p>The graph stops around 2015, where the ratio of time per flop to bandwith time-scale was around 10. Let's look at the ratio of Flops to Bandwith for recent Nvidia GPUs:</p>
+<p>The graph stops around 2015, where the ratio of time per flop to bandwith time-scale was around 10. Let's look at the FP64 Flop Per Load (FPL) factor. It is the average amount of FP64 operation you can do in the time that it takes to load one word (i.e. a FP64 number)) for recent Nvidia GPUs:</p>
 <table>
 <thead>
 <tr>
@@ -256,7 +256,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <th style="text-align: right;">Release Year</th>
 <th style="text-align: right;">FP64 FLOPS (TFLOPS)</th>
 <th style="text-align: right;">BW (TB/s)</th>
-<th style="text-align: right;">FLOPs per Double</th>
+<th style="text-align: right;">FPL</th>
 </tr>
 </thead>
 <tbody>
@@ -291,10 +291,29 @@ The advices are general enough so that they should allow speedups on all cards f
 </tbody>
 </table>
 <p><strong>Table 1:</strong> Evolution of the BW, FP64 flops and Flops per double for recent Nvidia GPU models. Last row is computed as $\frac{FP64 \ Flops}{BW}*8(bytes)$.</p>
-<p>I think it is illuminating to look at the value in the last row. It represents the average amount of FP64 operation you can do in the time that it takes to load one FP64 word. As we can see, it has been oscillating between 50 and 100. This should motivate you to think really hard about how you access memory.</p>
-<p>In fact, "communication avoiding algorithms" has been a very active and fruitful research area which lead to the development of the BLAS standard, the Lapack library, and much more. Here is a <a href="https://www.youtube.com/watch?v=sY3bgirw--4">brilliant introductory</a> lecture on that topic by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">webpage his CS267 class</a> with free lectures on Youtube. </p>
-<p>It is so important in fact that researchers have been computing theoretical bounds for the computational intensity of crucial algorithm, and worked hard to design such bound attaining programs.</p>
-<p>The bottom line is, you should make good use of the word you read from slow memory (DRAM) into fast memory (caches, registers), and avoid redundant read/writes.</p>
+<p>As we can see, the value has been oscillating between 50 and 100. This should motivate you to think really hard about how you access memory. In fact, "communication avoiding algorithms" has been a very active and fruitful research area which lead to the development of the BLAS standard, the Lapack library, and much more. Here is a <a href="https://www.youtube.com/watch?v=sY3bgirw--4">brilliant introductory</a> lecture on that topic by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">webpage his CS267 class</a> with free lectures on Youtube. </p>
+<p>One result that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> where the following simple memory model is proposed:</p>
+<ul>
+<li>Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties:<ul>
+<li>$M=$ number of words that fits into fast memory,</li>
+<li>$t_m=\beta=$ time per slow memory operation (inverse bandwith if latency is ignored),</li>
+<li>$t_f=$ time per artithmetic operation i.e. the number from the last column of Table 1.</li>
+</ul>
+</li>
+<li>Assume an implementation of an algorithm with:<ul>
+<li>$m=$ number of words moved bewteen fast and slow memory to complete the algorithm,</li>
+<li>$f=$ number of arithmetic operations to complete the algorithm,</li>
+</ul>
+</li>
+</ul>
+<p>We can then define $CI=\frac{f}{m}$, the computational intensity <strong>of the implementation of the algorithm</strong>, the average number of flops per slow memory access. While the previously defined FPL factor, <strong>a property of the machine</strong>, is just given as $FPL=\frac{t_m}{t_f}$.</p>
+<p>The minimum possible time for the our  algorithm is $t_{\text{ideal}}=f<em>t_f$, which is attained when the problem fits in fast memory ($m&lt;M$) and no slow memory transaction are required. But the real time is $t_{\text{real}}=f</em>t_f+m*t_m$ which rewrites:</p>
+<p>$t_{\text{real}}= t_{\text{ideal}}(1+\frac{FPL}{CI})$</p>
+<p>Since ${FPL}$ is a property of the hardware, with a value ranging between 50 and 100 depending on the GPU, all we can do is try to reduce $\frac{1}{CI}=\frac{m}{f}$, which is a combination of:
+  - A: How small can $CI$ be theoritically.
+  - B: How "well" you implemented it.</p>
+<p>We will not go over A, as this is just too general to be discussed in a blog, and is a resarch topic on it's own. No, here we will stay simple and focus on B; given a kernel, what mistakes to avoid to limit the amount of words we load / store by avoiding avoid redundant read/writes.</p>
+<p><strong>Note 3:</strong> Classical Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~an order of magnitude difference in bandwithd. CPUs have 5 levels with an additional L3 cache. As a result, the advices presented here also help CPU performance !</p>
 <h3 id="what-to-look-for-in-ncu">What to look for in ncu</h3>
 <h3 id="how-use-register-variables">How: use register variables</h3>
 <ul>
