@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>The cost of communications - My Blog</title>
+    <title>Second Post - My Blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "The cost of communications";
+        var mkdocs_page_name = "Second Post";
         var mkdocs_page_input_path = "posts/post2.md";
         var mkdocs_page_url = null;
       </script>
@@ -39,25 +39,19 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../post1/">Six basic performance advices for porting kernels to the GPU</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../post1/">First Post</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">The cost of communications</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#disclaimer">Disclaimer</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#hardware-trends">Hardware trends</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#a-simple-memory-model">A simple memory model</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#getting-good-performance">Getting good performance</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#properties-of-an-algorithm-vs-properties-of-an-implementation">Properties of an algorithm vs. properties of an implementation</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a>
-    </li>
-    </ul>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Second Post</a>
                   </li>
               </ul>
       </div>
@@ -75,7 +69,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Posts</li>
-      <li class="breadcrumb-item active">The cost of communications</li>
+      <li class="breadcrumb-item active">Second Post</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -84,101 +78,12 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="the-cost-of-memory-transfers">The cost of memory transfers</h1>
-<h2 id="disclaimer">Disclaimer</h2>
-<p>This post was orginally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimisation</a>, but then I realized that I liked to talk too much about it. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on Youtube, where you can find <strong>everything</strong> that I explain here.</p>
-<p><strong>Note</strong> The terms <em>communications</em> and <em>memory transfers</em> will be used interchangeably. Also in the present context, a <em>word</em> refers to a single FP64 number.</p>
-<h2 id="hardware-trends">Hardware trends</h2>
-<p>Looking at Figure 1, memory transfers, either within DRAM, or over the network, have been more expensive than (FP64) math operation since ~1992:
-<img alt=" " src="../image.png" />
-<strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwitdh (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
-<p>The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong> for more recent hardware:</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">GPU</th>
-<th style="text-align: right;">Release Year</th>
-<th style="text-align: right;">FP64 FLOPS (TFLOPS)</th>
-<th style="text-align: right;">BW (TB/s)</th>
-<th style="text-align: right;">FPL</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/tesla-v100-pcie-16-gb.c2957">V100</a></td>
-<td style="text-align: right;">2017</td>
-<td style="text-align: right;">7.066</td>
-<td style="text-align: right;">0.897</td>
-<td style="text-align: right;">~65.19</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/a100-pcie-40-gb.c3623">A100</a></td>
-<td style="text-align: right;">2020</td>
-<td style="text-align: right;">9.746</td>
-<td style="text-align: right;">1.56</td>
-<td style="text-align: right;">~49.9</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/h100-pcie-80-gb.c3899">H100</a></td>
-<td style="text-align: right;">2022</td>
-<td style="text-align: right;">25.61</td>
-<td style="text-align: right;">2.04</td>
-<td style="text-align: right;">~ 100</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210">B200</a></td>
-<td style="text-align: right;">2024</td>
-<td style="text-align: right;">62</td>
-<td style="text-align: right;">8.20</td>
-<td style="text-align: right;">~60</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Table 1:</strong> Evolution of the BW, FP64 flops and FPL for recent Nvidia GPU models. FPL is computed as <span class="arithmatex">\(\frac{FP64 \ Flops}{BW}*8\)</span> since a FP64 number is made of 8 bytes.</p>
-<p><strong>Note</strong> It is illuminating to think about FPL as the average amount of FP64 operation you can do in the time that it takes to load one word from DRAM.</p>
-<p>As we can see, the FPL has been oscillating between 50 and 100. This is really large, and should motivate you to think really hard about how you access memory. In fact, <em>communication avoiding algorithms</em> have been a very active and fruitful research area which lead to the development of the BLAS standard, the Lapack library, and much more.</p>
-<h2 id="a-simple-memory-model">A simple memory model</h2>
-<p>One result that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> where the following simple memory model is proposed:</p>
-<ul>
-<li>Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties and notations:<ul>
-<li><span class="arithmatex">\(M=\)</span> number of words that fits into fast memory,</li>
-<li>No latency (simplifying assumption),</li>
-<li><span class="arithmatex">\(t_m=\)</span> time per slow memory operation e.g. to moove a word from fast to slow memory (inverse BW from Table 1 multiplied by 8 in our case since we are doing FP64 and ignoring latency),</li>
-<li><span class="arithmatex">\(t_f=\)</span> time per artithmetic operation i.e. the inverse of the FLOPS in Table 1.</li>
-</ul>
-</li>
-<li>Assume an implementation of an algorithm with:<ul>
-<li><span class="arithmatex">\(m=\)</span> number of words moved bewteen fast and slow memory to complete the algorithm,</li>
-<li><span class="arithmatex">\(f=\)</span> number of arithmetic operations to complete the algorithm,</li>
-</ul>
-</li>
-</ul>
-<p>We can then define <span class="arithmatex">\(CI_{\text{implem}}=\frac{f}{m}\)</span>, a property  <strong>of the implementation of the algorithm</strong> that is called <em>the computational intensity</em>.It is the average number of flops per slow memory access. While the previously defined FPL factor, <strong>a property of the machine</strong>, is just given as <span class="arithmatex">\(FPL_{\text{hardware}}=\frac{t_m}{t_f}\)</span>.</p>
-<p><strong>Note:</strong> Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~an order of magnitude difference in bandwithd. CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierachies are omnipresent. As a result, the advices presented here also help CPU performance !</p>
-<h2 id="getting-good-performance">Getting good performance</h2>
-<p>The minimum possible time for the our algorithm is <span class="arithmatex">\(t_{\text{ideal}}=f*t_f\)</span>, which is attained when the problem fits in fast memory (<span class="arithmatex">\(m&lt;M\)</span>) and no slow memory transaction are required. This implies that we don't read any intial data from slow memory nor store in it, this is never the case in practice. </p>
-<p>Let's compare this to the real time for a big enough problem <span class="arithmatex">\(t_{\text{real}}=f*t_f+m*t_m\)</span> which rewrites:</p>
-<p><span class="arithmatex">\(t_{\text{real}}= t_{\text{ideal}}(1+\frac{FPL_{\text{hardware}}}{CI_{\text{implem}}})\)</span></p>
-<p>It is now clear that to get near optimal performance, we want to reduce the ratio <span class="arithmatex">\(\frac{FPL_{\text{hardware}}}{CI_{\text{implem}}}\)</span> as much as possible. Since <span class="arithmatex">\({FPL_{\text{hardware}}}\)</span> is a property of the hardware, with a value ranging between 50 and 100 depending on the GPU considered, all we can do is try to reduce <span class="arithmatex">\(\frac{1}{CI_{\text{implem}}}=\frac{m}{f}\)</span>, by trying to <strong>reuse</strong> the data we load as much as possible.</p>
-<h2 id="properties-of-an-algorithm-vs-properties-of-an-implementation">Properties of an algorithm vs. properties of an implementation</h2>
-<p>I insist on using the terminology <strong>implementation of an algorithm</strong> because in practice, the numbers <span class="arithmatex">\(f\)</span>, <span class="arithmatex">\(m\)</span> and <span class="arithmatex">\(CI_{\text{implem}}=\frac{f}{m}\)</span> should not be obtained by simply computing the ratio of how much memory should be touched, and how many operation should be done ideally, optimally for a given algorithm. Because most real problems do not fit in cache. Instead, these numbers are a property of how the algorithm is implemented, compiled and ran. In fact, they can vary dramatically between a naive and a smart implementation.</p>
-<p>Let's consider the example of a very generic algorithm: <strong>dense matrix multiplication</strong>, <span class="arithmatex">\(C=A.B\)</span> (the 1st homework of <a href="https://sites.google.com/lbl.gov/cs267-spr2022">CS267</a> and topic of the 2nd and 3rd lectures). If three <span class="arithmatex">\(n\times n\)</span> matrices fits in fast memory, we know that that we need to load/store only <span class="arithmatex">\(3n^2\)</span> words (2 matrix read, 1 matrix write) from slow memory, and perform <span class="arithmatex">\(2n^3\)</span> operations (one dot product per element of C, each dot product being <span class="arithmatex">\(n\)</span> multiply and <span class="arithmatex">\(n\)</span> add) with a resulting <span class="arithmatex">\(CI_{\text{ideal}}^{\text{matmul}}=\frac{3}{2n}\)</span>. The bigger <span class="arithmatex">\(n\)</span> is, the closer we get from ideal performance. However, as <span class="arithmatex">\(n\)</span> grows, it is clear that the problem does not fit in fast memory (<span class="arithmatex">\(3n^2&gt;M\)</span> eventually). Then, a naive implementation of matrix multiply such as:</p>
-<pre><code class="language-python">for i in range(n):
-    #load A[i,:] in fast memory
-    for j in range (n): 
-        #load B[:,j] in fast memory
-        C[i,j] = dot(A[i,:], B[:,j])
-    #store C[i,:] in fast memory
-</code></pre>
-<p>can be shown to have a computational intensity <span class="arithmatex">\(CI_{\text{naive}}^{\text{matmul}}=\mathcal{O}(1)\)</span>, which is terrible ! On the other hand, the well-known blocked implementation that splits and iterates over <span class="arithmatex">\(b\times b\)</span> sub-blocks of the matrices has a computational intensity of  <span class="arithmatex">\(CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(b)\)</span>, assuming that the blocks fit in fast memory. </p>
-<p>So, you might wonder, what should I do ? How do I know if there is a better algorithm ? Well, a theoretical upper bound on the computational intensity has been found and is given by <span class="arithmatex">\(CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(\sqrt{M})\)</span>, and if you ever write a new dense matmul implementation, you should strive to reach it. And notice ! the blocked algortihm reaches that bound. Indeed, since the blocks fit in fast memory, <span class="arithmatex">\(3b^2 &lt;=M\)</span> <span class="arithmatex">\(\implies\)</span> <span class="arithmatex">\(b=\mathcal{O}(\sqrt{M})\)</span>. This is the whole point of <em>communication avoiding algorithms</em> research: computing lower bounds and finding algorithm that reaches them. Again, if you find this interesting, consider looking at this <a href="https://www.youtube.com/watch?v=sY3bgirw--4">brilliant introduction</a>.</p>
-<h2 id="conclusion">Conclusion</h2>
-<p>Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In <a href="../post1/">my first post on GPU kernel optimisation</a> I go over frequent coding mistakes that leads to extra useless communications. In that posr, I don't want to even try to pretend that I can help you computing nor reaching the theoretical communication lower bound for your algorithm. This is just too general to be discussed in a blogpost, and as we saw, it constitutes a resarch topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.</p>
+                
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../post1/" class="btn btn-neutral float-left" title="Six basic performance advices for porting kernels to the GPU"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../post1/" class="btn btn-neutral float-left" title="First Post"><span class="icon icon-circle-arrow-left"></span> Previous</a>
     </div>
 
   <hr/>
@@ -210,7 +115,6 @@
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>
         jQuery(function () {

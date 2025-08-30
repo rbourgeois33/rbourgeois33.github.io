@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Six basic performance advices for porting kernels to the GPU - My Blog</title>
+    <title>First Post - My Blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Six basic performance advices for porting kernels to the GPU";
+        var mkdocs_page_name = "First Post";
         var mkdocs_page_input_path = "posts/post1.md";
         var mkdocs_page_url = null;
       </script>
@@ -39,89 +39,35 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Six basic performance advices for porting kernels to the GPU</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">First Post</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#0-introduction">0. Introduction</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#some-context-and-motivations">Some context and motivations</a>
+    <li class="toctree-l2"><a class="reference internal" href="#some-context-and-motivations">Some context and motivations</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#disclaimer-requirements">Disclaimer &amp; Requirements</a>
+        <ul>
     <li class="toctree-l3"><a class="reference internal" href="#disclaimers">Disclaimers</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#pre-requisits">Pre-requisits</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#outline">Outline</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#before-we-start">Before we start</a>
+    <li class="toctree-l3"><a class="reference internal" href="#requirements">Requirements</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#2-ensure-memory-access-are-coalesced">2. Ensure memory access are coalesced</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_1">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_1">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_1">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#3-minimize-redundant-math-operation-use-cheap-arithmetics">3. Minimize redundant math operation, use cheap arithmetics</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_2">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_2">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_2">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#4-understanding-occupancy">4. Understanding occupancy</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_3">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_3">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_3">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#5-avoid-the-use-of-local-memory">5. Avoid the use of Local memory</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_4">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_4">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_4">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#6-avoid-thread-divergence">6. Avoid thread divergence</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_5">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_5">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_5">Advices</a>
-    </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#outline">Outline</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#final-advices">Final advices</a>
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../post2/">Second Post</a>
                   </li>
               </ul>
       </div>
@@ -139,7 +85,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Posts</li>
-      <li class="breadcrumb-item active">Six basic performance advices for porting kernels to the GPU</li>
+      <li class="breadcrumb-item active">First Post</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -148,53 +94,36 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="six-basic-performance-advices-for-porting-kernels-to-the-gpu">Six basic performance advices for porting kernels to the GPU.</h1>
-<h2 id="0-introduction">0. Introduction</h2>
-<h3 id="some-context-and-motivations">Some context and motivations</h3>
-<p>Hello world ! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a researcher engineer working at the French Atomic Energy Comission (CEA). I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC (multi-GPU) CFD code that serves as a basis for many research/industrial applications.</p>
+                <h1 id="basic-performance-tricks-for-porting-kernels-to-the-gpu">Basic performance tricks for porting kernels to the GPU.</h1>
+<h2 id="some-context-and-motivations">Some context and motivations</h2>
+<p>Hello world! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a researcher engineer working at the French Atomic Energy Comission (CEA). I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC (multi-GPU) CFD code that serves as a basis for many research/industrial applications.</p>
 <p>I was hired by CEA to join the porting effort of this legacy code to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! As I went and optimized some kernels, something struck me:</p>
 <p><strong>The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong></p>
 <p>The goal of this blogpost is to give you <em>basic</em>, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a <em>reasonable</em> performance.</p>
-<p>By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:</p>
+<p>By applying them, I was able to get:</p>
 <ul>
 <li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstruous kernel.</li>
-<li>A 20-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
-<li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU)</li>
+<li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
+<li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a></li>
 <li>TODO: add ncu reports</li>
+<li>A</li>
 </ul>
-<p>By <em>reasonable</em> I do not mean that you will get <em>optimal</em> performance. In fact, I will not go over what I consider to be <em>advanced</em> optimization advices such as the use of </p>
-<ul>
-<li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, </li>
-<li><a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a>,</li>
-<li><a href="https://developer.nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,</li>
-<li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </li>
-</ul>
-<p>If getting  <em>optimal</em> performance is crucial to your application, consider learning more and apply these, but keep in mind that <strong>performance often comes at the cost of portability</strong>.
-The advices are general enough so that they should allow speedups on all cards from all vendors.  By <em>advanced</em>, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. In contrast, I believe that the advices I will give to you in this blogpost are easy enough so that you can, and should apply them straightforwardly while porting your code to the GPU in a time limited environement. </p>
-<p><strong>Note 1:</strong> The target audience is engineer / researcher that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, hihgly optimized and distributed in libraries. Consider looking into (non exhaustive list !):</p>
-<ul>
-<li><a href="https://docs.nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
-<li><a href="https://github.com/kokkos/kokkos-kernels">kokkos kernels</a> for portable BLAS, sparse BLAS and fraph kernels.</li>
-<li><a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.</li>
-<li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs)</li>
-</ul>
+<p>By <em>reasonable</em> I do not mean that you are getting <em>optimal</em> perfomance. In fact, I will not go over what I consider to be <em>advanced</em> optimization tricks such as the use of <a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, <a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a> orlaunch bound tuning [link]. By <em>advanced</em>, I do not mean that these topics are especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a CFD code like TRUST. In contrast, I believe that the tricks I will give to you in this blogpost are easy enough so that you can and should apply them straightforwardly while porting your code to the GPU in a time limited environement. Moreover, I will not go into GPU model-specific optimizations [link elfarou], the advices are basic enough so that they should beneif on all cards.</p>
+<h2 id="disclaimer-requirements">Disclaimer &amp; Requirements</h2>
 <h3 id="disclaimers">Disclaimers</h3>
-<p>If you think I wrote something that is wrong, or misleading please let me know !</p>
+<p>If you think I wrote something that is wrong, please let me know !</p>
 <p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.nvidia.com/nsight-systems">nsight systems</a> (nsys) and <a href="https://developer.nvidia.com/nsight-compute">nsight compute</a> (ncu). However, note that AMD provides similar profilers, and that the advices that I give here are simple enought so that they apply for GPUs from both vendors.</p>
-<p>Moreover, I will use Kokkos as the programming model, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
-<h3 id="pre-requisits">Pre-requisits</h3>
-<p>In this small tutorial, I will assume that you are already familiar with / will not cover:</p>
+<p>Moreover, I will use Kokkos as the programming model, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate it to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
+<h3 id="requirements">Requirements</h3>
+<p>In this small tutorial, I will assume that you are already familiar with:</p>
 <ul>
 <li>Basic C++.</li>
 <li>The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.</li>
-<li>How to Compile a GPU code, generate a report with <a href="https://youtu.be/04dJ-aePYpE?si=wTO9vJsRmVMBfM8a">Nvidia nsight compute</a> and loading in with the ui.</li>
-<li>What is Kokkos, why you might want to use it and how to get started with it. Some ressources:<ul>
+<li>What is Kokkos, why you want to use it and how to use it. Some ressources:</li>
 <li><a href="https://www.youtube.com/watch?v=y3HHBl4kV7g">Talk by Christian Trott, Co-leader of the Kokkos core team</a>.</li>
 <li><a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, but you can find a lot of ressources online, alos, join the slack !).</li>
 <li><strong>Note:</strong> you really <em>should</em> consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see <a href="https://cexa-project.org/">the CExA project</a>).</li>
-</ul>
-</li>
-<li>Basic GPU architecture, in particular:<ul>
+<li>Basic GPU architecture, in particular:</li>
 <li>That you should avoid host to device memory transfers.</li>
 <li>The roofline performance model.</li>
 <li>What does compute bound / memory bound mean.</li>
@@ -204,78 +133,55 @@ The advices are general enough so that they should allow speedups on all cards f
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures on CUDA programming by Bob Crovella</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li>Application-level optimization:<ul>
-<li>How to build a sensible optimization roadmap with e.g. Nvidia Nsight System</li>
+<li>Application-level optimization:</li>
+<li>How to build a sensible optimization roadmap.</li>
 <li>How to ensure that it is worth it to optimize the kernel you are looking (Don't assume bottleneck, profile, assess, optimize).</li>
+<li>How to use Nvidia Nsight System</li>
 <li>Some ressouces:<ul>
 <li><a href="https://www.youtube.com/watch?v=nhTjq0P9uc8&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&amp;index=8">8th lecture from the Bob Crovella lecture series</a> which focuses on that topic.</li>
 </ul>
 </li>
 </ul>
-</li>
-</ul>
-<h3 id="outline">Outline</h3>
-<p>The outline for this post is the following 6 rules of thumbs,or advices, largely inspired by <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
+<h2 id="outline">Outline</h2>
 <ol>
-<li>Minimise redundant global memory accesses.</li>
+<li>Use the basic functionnalities of nsight compute.</li>
+<li>Lancer depuis un cluster, read en local, commande pour un kernel kokkos.</li>
+<li>Minimuse redundant global memory accesses.</li>
+<li>Comm vs comp photo demmel</li>
+<li>James demmel stuff</li>
+<li>accumulateur</li>
+<li>tableaux statiques</li>
+<li>in ncu</li>
 <li>Ensure memory access are coalesced.</li>
+<li>Sectors/cache line</li>
+<li>Layout (Kokkos Layout consipracy)</li>
+<li>in ncu</li>
 <li>Minimize redundant math operation, use cheap arithmetics.</li>
-<li>Understanding occupancy.</li>
-<li>Avoid the use of <em>Local memory</em>.</li>
-<li>Avoid thread divergence.</li>
+<li>FMA</li>
+<li>/ vs *</li>
+<li>in ncu</li>
+<li>Avoid the use of <em>Local memory</em> by removing:</li>
+<li>Register spilling</li>
+<li>accidental stack usage<ol>
+<li>Accés statiques aux tableaux statiques. Cad avoir des bornes de boucles connues au compile time quand on accède à des tableaux statique dedans. Ca implique aussi des switch moches parfois quand on a le pattern y=face[x] avec x pas connu au compile time mais très très important pour la perf.</li>
 </ol>
-<p>For each topic, I will provide:</p>
-<ul>
-<li>An explanation of why you need to worry about it, "Background" subsections,</li>
-<li>How to detect that it is limiting your kernel performance using ncu , "Profiler diagnosis" subsections,</li>
-<li>How to fix / avoid the issue, "Advices" subsections.</li>
-</ul>
-<p>Feel free to jump straight into your sections of interest. </p>
-<h3 id="before-we-start">Before we start</h3>
-<p>Before going into the 6 advices, I invite you to read <a href="../post2/">my post on the cost of communications</a> that is a good, unesseray long introduction for advices 1. and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk on communication-avoiding algorithms</a>.</p>
-<h2 id="1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</h2>
-<h3 id="background">Background</h3>
-<h3 id="profiler-diagnosis">Profiler diagnosis</h3>
-<h3 id="advices">Advices</h3>
-<p>use register variable + static array, might need to template</p>
-<h2 id="2-ensure-memory-access-are-coalesced">2. Ensure memory access are coalesced</h2>
-<h3 id="background_1">Background</h3>
-<h3 id="profiler-diagnosis_1">Profiler diagnosis</h3>
-<h3 id="advices_1">Advices</h3>
-<p>Think about your data Layout Kokkos layout conspiracy The granularity of memory accesses: lost bytes</p>
-<h2 id="3-minimize-redundant-math-operation-use-cheap-arithmetics">3. Minimize redundant math operation, use cheap arithmetics</h2>
-<h3 id="background_2">Background</h3>
-<h3 id="profiler-diagnosis_2">Profiler diagnosis</h3>
-<h3 id="advices_2">Advices</h3>
-<p>FMA, / vs *, unroll loop for int computation might need to template Math can be a bottleneck  Do smarter math</p>
-<h2 id="4-understanding-occupancy">4. Understanding occupancy</h2>
-<h3 id="background_3">Background</h3>
-<h3 id="profiler-diagnosis_3">Profiler diagnosis</h3>
-<h3 id="advices_3">Advices</h3>
-<p>Hide latency The occupancy trap, ILP, hide latency reduce Register usage
-Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches</p>
-<h2 id="5-avoid-the-use-of-local-memory">5. Avoid the use of <em>Local memory</em></h2>
-<h3 id="background_4">Background</h3>
-<h3 id="profiler-diagnosis_4">Profiler diagnosis</h3>
-<h3 id="advices_4">Advices</h3>
-<p>Local memory is SLOW
-Why does it spills + ref a la precedente section
-How to avoid stack usage
-attention aux tableaux statiques</p>
-<h2 id="6-avoid-thread-divergence">6. Avoid thread divergence</h2>
-<h3 id="background_5">Background</h3>
-<h3 id="profiler-diagnosis_5">Profiler diagnosis</h3>
-<h3 id="advices_5">Advices</h3>
-<p>The SIMD pattern, masking templating</p>
+</li>
+<li>in ncu, avec les options de compil</li>
+<li>Understanding occupancy, and when to worry about it:</li>
+<li>latency hiding</li>
+<li>The occupancy trap, ILP</li>
+<li>Pas de MDRange: moins de pression sur les registres</li>
+<li>Avoid thread divergence:</li>
+<li>Templater les paramètres qui change bcp l'execution. bien aussi pour l'occupancy !!</li>
+</ol>
 <h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../post2/" class="btn btn-neutral float-right" title="The cost of communications">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../about/" class="btn btn-neutral float-left" title="About"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../post2/" class="btn btn-neutral float-right" title="Second Post">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -298,6 +204,8 @@ attention aux tableaux statiques</p>
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
+      <span><a href="../../about/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
     
       <span><a href="../post2/" style="color: #fcfcfc">Next &raquo;</a></span>
     
@@ -307,7 +215,6 @@ attention aux tableaux statiques</p>
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>
         jQuery(function () {
