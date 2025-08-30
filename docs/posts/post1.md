@@ -89,7 +89,7 @@ Feel free to jump straight into your sections of interest.
 
 ### Before we start
 
-Before going into the 6 advices, I invite you to read [my post on the cost of communications](posts/post2.md) that is a good, unesseray long introduction for advices 1. and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=sY3bgirw--4).
+Before going into the 6 advices, I invite you to read [my post on the cost of communications](post2.md) that is a good, unesseray long introduction for advices 1. and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=sY3bgirw--4).
 
 ## 1. Minimise redundant global memory accesses
 ### Background
