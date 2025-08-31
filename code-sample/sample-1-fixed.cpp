@@ -6,11 +6,9 @@ int main(int argc, char* argv[]) {
 
     const int size = 1<<27;
 
-    // Create a 1D view of length 10
     Kokkos::View<float*> A("A", size);
     Kokkos::View<float*> B("B", size);
 
-    // Initialize with zeros
     Kokkos::deep_copy(A, 0);
     Kokkos::deep_copy(A, 1);
 
