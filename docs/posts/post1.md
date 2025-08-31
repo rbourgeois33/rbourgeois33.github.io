@@ -79,7 +79,7 @@ The outline for this post is the following 6 rules of thumbs,or advices, largely
 5. Avoid the use of *Local memory*.
 6. Avoid thread divergence.
 
-Feel free to jump straight into your sections of interest. 
+Feel free to jump straight into your sections of interest. TODO: i want also to giuve insight on where to look in ncu
 
 ### Before we start
 
@@ -89,9 +89,9 @@ Before going into the 6 advices, I invite you to read [my post on the cost of co
 
 As discussed in [my post on the cost of communications](post2.md), on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from global memory up to registers than computing a FMA math operation on that number. We call this ratio the **flop per load** (FPL). The cache hierachy does mitigates that number, but each and every access to global memory *is* more expensive than a register manipulation by a factor of at least 2-5x, assuming the variable is cached in L1. You should avoid them *at all cost*.
 
-### A first simple example
+### A first simple example, temporary register storages
 Let's considers at [sample-1.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1.cpp) where we create two Device views:
-
+TODO: préciser qu'une kokkos view c'est un vecteur sur le device
 ```c++
 const int size = 1<<27;
 Kokkos::View<float*> A("A", size);
@@ -153,11 +153,51 @@ The warp states shows you the **reasons** why your warps have been stalled durin
 **Figure 4:** Metric information for Stall long scoreboard.
 
 Stall long scoreboard means that warps are waiting on a memory dependancy from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependancy, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !
+
+Let't now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1-fixed.ncu-rep). I recommend using the "add baseline" functionnality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:
+
+- GPU Speed of light throuput:
+    - The compute pipeline is less busy, I'm honestly not sure why.
+    - The memory pipeline is more used (+6%)
+  
+![alt text](image-8.png)
+**Figure 2:** Memory workload analysis for sample-1-fixed.cpp.
+
+- Memory workload Analysis: 
+    - The memory throuput is much closer to the theoretical peak (865 GB/s, +180%)
+    - The previously healthy memory transfers are unchanged, but the L1 to L2 writes are reduced by 94%, as well as the caches hit rates. This shows that our cleaner implementation relies less on the caches, because it has much fewer redundant memory accesses.
+
+
 <!-- We can see that the kernel uses both memory and compute pipelines extensively. The high value of memory usage is surprising; Each thread is performing a lot of math; around 30 FMA, but is is much lower than the FP32 FPL of the GPU I am working with (A [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933), with a FP32 FPL of 379) -->
 <!-- - 255.85M request between the kernel and global memory, split amongst ~130M Reads and ~130M Writes.
     - This corresponds to $2^{27}(30) -->
-### Advices
-tatic array, might need to template
+### Static arrays as temporary storages
+Let's now consider a multi-dimensional case, with 2D Views and at least one run-time axis size, here, `dim`:
+
+```c++
+const int size = 1<<27;
+int dim = 3;
+Kokkos::View<float**> A("A", size, dim);
+Kokkos::View<float**> B("B", size, dim);
+```
+
+and the following kernel from [sample-2.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-2.cpp):
+
+```c++
+Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) { 
+
+    for (int k = 0; k < 10; k++){
+        for (int dir = 0; dir < dim; dir++){
+            for (int dir2 = 0; dir2 < dim; dir2++){
+                A(i,dir) += B(i,dir2);
+            }
+        }
+    }
+
+});
+```
+
+It is clear that there are redundant memory accesses, that we would like to store in temporary arrays
 
 ## 2. Ensure memory access are coalesced
 ### Background
