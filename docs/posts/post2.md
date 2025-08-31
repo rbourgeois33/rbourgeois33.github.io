@@ -1,6 +1,6 @@
 # The cost of memory transfers
 ## Disclaimer
-This post was orginally supposed to be a short introduction within [my first post on GPU kernel optimisation](post1.md), but then I realized that I liked to talk too much about it. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on Youtube, where you can find **everything** that I explain here.
+This post was orginally supposed to be a short introduction within [my first post on GPU kernel optimisation](post1.md), but then I realized that I liked to talk too much about it and went out of scope. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on Youtube, where you can find **everything** that I explain here.
 
 **Note** The terms *communications* and *memory transfers* will be used interchangeably. Also in the present context, a *word* refers to a single FP64 number.
 
@@ -30,7 +30,7 @@ One result that I like a lot is the one presented in [the second CS267 lecture](
 
 - Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties and notations:
     - $M=$ number of words that fits into fast memory,
-    - No latency (simplifying assumption),
+    - no latency (simplifying assumption),
     - $t_m=$ time per slow memory operation e.g. to moove a word from fast to slow memory (inverse BW from Table 1 multiplied by 8 in our case since we are doing FP64 and ignoring latency),
     - $t_f=$ time per artithmetic operation i.e. the inverse of the FLOPS in Table 1.
 - Assume an implementation of an algorithm with:
@@ -44,9 +44,9 @@ We can then define $CI_{\text{implem}}=\frac{f}{m}$, a property  **of the implem
 
 ## Getting good performance
 
-The minimum possible time for the our algorithm is $t_{\text{ideal}}=f*t_f$, which is attained when the problem fits in fast memory ($m<M$) and no slow memory transaction are required. This implies that we don't read any intial data from slow memory nor store in it, this is never the case in practice. 
+The minimum possible time for the our algorithm is $t_{\text{ideal}}=ft_f$, which is attained when the problem fits in fast memory ($m<M$) and no slow memory transaction are required. This implies that we don't read any intial data from slow memory nor store in it, this is never the case in practice. 
 
-Let's compare this to the real time for a big enough problem $t_{\text{real}}=f*t_f+m*t_m$ which rewrites:
+Let's compare this to the real time for a big enough problem $t_{\text{real}}=ft_f+mt_m$ which rewrites:
 
 $t_{\text{real}}= t_{\text{ideal}}(1+\frac{FPL_{\text{hardware}}}{CI_{\text{implem}}})$
 
@@ -66,8 +66,8 @@ for i in range(n):
 ```
 can be shown to have a computational intensity $CI_{\text{naive}}^{\text{matmul}}=\mathcal{O}(1)$, which is terrible ! On the other hand, the well-known blocked implementation that splits and iterates over $b\times b$ sub-blocks of the matrices has a computational intensity of  $CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(b)$, assuming that the blocks fit in fast memory. 
 
-So, you might wonder, what should I do ? How do I know if there is a better algorithm ? Well, a theoretical upper bound on the computational intensity has been found and is given by $CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(\sqrt{M})$, and if you ever write a new dense matmul implementation, you should strive to reach it. And notice ! the blocked algortihm reaches that bound. Indeed, since the blocks fit in fast memory, $3b^2 <=M$ $\implies$ $b=\mathcal{O}(\sqrt{M})$. This is the whole point of *communication avoiding algorithms* research: computing lower bounds and finding algorithm that reaches them. Again, if you find this interesting, consider looking at this [brilliant introduction](https://www.youtube.com/watch?v=sY3bgirw--4).
+So, you might wonder, what should I do ? How do I know if there is a better algorithm ? Well, a theoretical upper bound on the computational intensity has been found and is given by $CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(\sqrt{M})$, and if you ever write a new dense matmul implementation, you should strive to reach it. And notice ! the blocked algortihm reaches that bound. Indeed, since the blocks fit in fast memory, $3b^2 <M$ $\implies$ $b=\mathcal{O}(\sqrt{M})$. This is the whole point of *communication avoiding algorithms* research: computing lower bounds and finding algorithm that reaches them. Again, if you find this interesting, consider looking at this [brilliant introduction](https://www.youtube.com/watch?v=sY3bgirw--4).
 
 ## Conclusion
 
-Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In [my first post on GPU kernel optimisation](post1.md) I go over frequent coding mistakes that leads to extra useless communications. In that posr, I don't want to even try to pretend that I can help you computing nor reaching the theoretical communication lower bound for your algorithm. This is just too general to be discussed in a blogpost, and as we saw, it constitutes a resarch topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.
+Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In [my first post on GPU kernel optimisation](post1.md) I go over frequent coding mistakes that leads to extra useless communications. In that post, I will not give guidelines to reach theoritical lower bounds for your case. This is just too general to be discussed in a blogpost. As we saw, it constitutes a resarch topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.
