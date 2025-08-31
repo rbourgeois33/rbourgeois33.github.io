@@ -96,7 +96,7 @@
               
                 <h1 id="the-cost-of-memory-transfers">The cost of memory transfers</h1>
 <h2 id="disclaimer">Disclaimer</h2>
-<p>This post was orginally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimisation</a>, but then I realized that I liked to talk too much about it. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on Youtube, where you can find <strong>everything</strong> that I explain here.</p>
+<p>This post was orginally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimisation</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on Youtube, where you can find <strong>everything</strong> that I explain here.</p>
 <p><strong>Note</strong> The terms <em>communications</em> and <em>memory transfers</em> will be used interchangeably. Also in the present context, a <em>word</em> refers to a single FP64 number.</p>
 <h2 id="hardware-trends">Hardware trends</h2>
 <p>Looking at Figure 1, memory transfers, either within DRAM, or over the network, have been more expensive than (FP64) math operation since ~1992:
