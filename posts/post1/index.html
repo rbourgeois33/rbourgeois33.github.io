@@ -67,13 +67,15 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</a>
+    <li class="toctree-l2"><a class="reference internal" href="#1-minimise-thread-level-redundant-global-memory-accesses">1. Minimise thread-level redundant global memory accesses</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#a-first-simple-example">A first simple example</a>
+    <li class="toctree-l3"><a class="reference internal" href="#a-first-simple-example-temporary-register-storages">A first simple example, temporary register storages</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#static-arrays-as-temporary-storages">Static arrays as temporary storages</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#concluding-remarks-shared-memory-for-reducing-block-level-redundant-memory-accesses">Concluding remarks: shared memory for reducing block-level redundant memory accesses</a>
     </li>
         </ul>
     </li>
@@ -83,7 +85,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_1">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_1">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices">Advices</a>
     </li>
         </ul>
     </li>
@@ -93,7 +95,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_2">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_2">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_1">Advices</a>
     </li>
         </ul>
     </li>
@@ -103,7 +105,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_3">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_3">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_2">Advices</a>
     </li>
         </ul>
     </li>
@@ -113,7 +115,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_4">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_4">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_3">Advices</a>
     </li>
         </ul>
     </li>
@@ -123,7 +125,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_5">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_5">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_4">Advices</a>
     </li>
         </ul>
     </li>
@@ -209,6 +211,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <li>The roofline performance model.</li>
 <li>What does compute bound / memory bound mean.</li>
 <li>Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.</li>
+<li>What are CUDA threads / blocks, global and local memory spaces</li>
 <li>Some ressources on GPU architecture / CUDA programming:<ul>
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou</a></li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella</a></li>
@@ -229,20 +232,21 @@ The advices are general enough so that they should allow speedups on all cards f
 <h3 id="outline">Outline</h3>
 <p>The outline for this post is the following 6 rules of thumbs,or advices, largely inspired by <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
 <ol>
-<li>Minimise redundant global memory accesses.</li>
+<li>Minimize thread-level redundant global memory accesses.</li>
 <li>Ensure memory access are coalesced.</li>
 <li>Minimize redundant math operation, use cheap arithmetics.</li>
 <li>Understanding occupancy.</li>
 <li>Avoid the use of <em>Local memory</em>.</li>
 <li>Avoid thread divergence.</li>
 </ol>
-<p>Feel free to jump straight into your sections of interest. </p>
+<p>Feel free to jump straight into your sections of interest. TODO: i want also to giuve insight on where to look in ncu</p>
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the 6 advices, I invite you to read <a href="../post2/">my post on the cost of communications</a> that is a good, unesseray long introduction for advices 1. and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk on communication-avoiding algorithms</a>. Moreover, all sample code and ncu reports can be <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were ran on my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
-<h2 id="1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</h2>
+<h2 id="1-minimise-thread-level-redundant-global-memory-accesses">1. Minimise thread-level redundant global memory accesses</h2>
 <p>As discussed in <a href="../post2/">my post on the cost of communications</a>, on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from global memory up to registers than computing a FMA math operation on that number. We call this ratio the <strong>flop per load</strong> (FPL). The cache hierachy does mitigates that number, but each and every access to global memory <em>is</em> more expensive than a register manipulation by a factor of at least 2-5x, assuming the variable is cached in L1. You should avoid them <em>at all cost</em>.</p>
-<h3 id="a-first-simple-example">A first simple example</h3>
-<p>Let's considers at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1.cpp">sample-1.cpp</a> where we create two Device views:</p>
+<h3 id="a-first-simple-example-temporary-register-storages">A first simple example, temporary register storages</h3>
+<p>Let's considers at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1.cpp">sample-1.cpp</a> where we create two Device views:
+If you are not familiar with Kokkos views, in this context, they are just a container for a vector that resides on the GPU.</p>
 <pre><code class="language-c++">const int size = 1&lt;&lt;27;
 Kokkos::View&lt;float*&gt; A(&quot;A&quot;, size);
 Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
@@ -282,7 +286,7 @@ Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
 </ul>
 </li>
 <li>Communications between DRAM (Device Memory) and L2:<ul>
-<li>1.07 GB reads, which corresponds to <span class="arithmatex">\(2^{27}(size) \times 2 (\text{A and B}) \times 4 (\text{bytes per double})=1.07\times 10^9\)</span> bytes. There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !</li>
+<li>1.07 GB reads, which corresponds to <span class="arithmatex">\(2^{27}(\text{size}) \times 2 (\text{A and B}) \times 4 (\text{bytes per double})=1.07\times 10^9\)</span> bytes. There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !</li>
 </ul>
 </li>
 <li>Communications between L2 and L1:<ul>
@@ -303,31 +307,110 @@ If you are not familiar with warps states, really consider looking at <a href="h
 <img alt="alt text" src="../image-6.png" />
 <strong>Figure 4:</strong> Metric information for Stall long scoreboard.</p>
 <p>Stall long scoreboard means that warps are waiting on a memory dependancy from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependancy, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !</p>
+<p>Let't now take a look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>. I recommend using the "add baseline" functionnality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:</p>
+<ul>
+<li>GPU Speed of light throuput:<ul>
+<li>The compute pipeline is less busy, I'm honestly not sure why.</li>
+<li>The memory pipeline is more used (+6%)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="alt text" src="../image-8.png" />
+<strong>Figure 5:</strong> Memory workload analysis for sample-1-fixed.cpp.</p>
+<ul>
+<li>Memory workload Analysis: <ul>
+<li>The memory throuput is much closer to the theoretical peak (865 GB/s, +180%)</li>
+<li>The previously healthy memory transfers are unchanged, but the L1 to L2 writes are reduced by 94%, as well as the caches hit rates. This shows that our cleaner implementation relies less on the caches, because it has much fewer redundant memory accesses.</li>
+</ul>
+</li>
+</ul>
 <!-- We can see that the kernel uses both memory and compute pipelines extensively. The high value of memory usage is surprising; Each thread is performing a lot of math; around 30 FMA, but is is much lower than the FP32 FPL of the GPU I am working with (A [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933), with a FP32 FPL of 379) -->
 <!-- - 255.85M request between the kernel and global memory, split amongst ~130M Reads and ~130M Writes.
     - This corresponds to $2^{27}(30) -->
-<h3 id="advices">Advices</h3>
-<p>tatic array, might need to template</p>
+<h3 id="static-arrays-as-temporary-storages">Static arrays as temporary storages</h3>
+<p>Let's now consider a multi-dimensional case, with 2D Views and at least one run-time axis size, here, <code>dim</code>:</p>
+<pre><code class="language-c++">const int size = 1&lt;&lt;27;
+int dim = 3;
+Kokkos::View&lt;float**&gt; A(&quot;A&quot;, size, dim);
+Kokkos::View&lt;float**&gt; B(&quot;B&quot;, size, dim);
+</code></pre>
+<p>and the following kernel from <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-2.cpp">sample-2.cpp</a>:</p>
+<pre><code class="language-c++">Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) { 
+    for (int k = 0; k &lt; 10; k++){
+        for (int dir = 0; dir &lt; dim; dir++){
+            for (int dir2 = 0; dir2 &lt; dim; dir2++){
+                A(i,dir) += B(i,dir2);
+            }
+        }
+    }
+});
+</code></pre>
+<p>It is clear that there are redundant memory accesses, that we would like to store in a array residing in registers as follows:</p>
+<pre><code class="language-c++">Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) { 
+
+    float Atmp[dim], Btmp[dim];
+
+    for (int dir = 0; dir &lt; dim; dir++){
+        Atmp[dir] = A(i, dir);
+        Btmp[dir] = B(i, dir);
+    }
+
+    for (int k = 0; k &lt; 10; k++){
+        for (int dir = 0; dir &lt; dim; dir++){
+            for (int dir2 = 0; dir2 &lt; dim; dir2++){
+            Atmp[dir] += Btmp[dir];
+            }
+        }
+    }
+
+    for (int dir = 0; dir &lt; dim; dir++){
+        A(i,dir) = Atmp[dir];
+    }
+});
+</code></pre>
+<p>However, <code>dim</code> is a run-time variable, while arrays must be declared with compile time-value. In this case, this generate a compile error. If you somehow manage to get a run-time sized vector in your kernel and avoid a compilation error, you will at best get a slow runtime, as it will reside in local memory, cf. section 2. The solution is to wrap the kernel in a <code>dim</code>-templated function, as done in <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-2-fixed.cpp">sample-2-fixed.cpp</a>:</p>
+<pre><code class="language-c++">template&lt;int dim&gt;
+void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B, int size){
+
+    Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) { 
+    // ... the previous kernel ...
+    });
+}
+</code></pre>
+<p>which can be called as follows, where dim is picked at runtime:</p>
+<pre><code class="language-c++">if (dim==1){
+    apply_kernel&lt;1&gt;(A, B, size);
+} else if (dim==2){
+    apply_kernel&lt;2&gt;(A, B, size);
+} else if (dim==3){
+    apply_kernel&lt;3&gt;(A, B, size);
+} else{
+   // Need more instantiations ! Fail or warning 
+}
+</code></pre>
+<p>I will not go through the ncu reports for this second example as the behavior is really similar to sample-1, but feel free to look a them yourself. The speedup obtained is 75% which is not surpising, since I pick the examples.</p>
+<h3 id="concluding-remarks-shared-memory-for-reducing-block-level-redundant-memory-accesses">Concluding remarks: shared memory for reducing block-level redundant memory accesses</h3>
+<p>This section is limited to reducing <strong>thread-level</strong> redundant memory accesses. If you spot that nighbouring threads(that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about <code>shared-memory</code>, to reduce redundant <strong>block-level</strong> memory accesses. <code>shared-memory</code> is essentially a portion of the L1 cache managed by the user. L1 cache is the fastest cache, right before registers, that is shared by threads of a block. But beware, using it means that you think you are smarter that the runtime ! :).</p>
 <h2 id="2-ensure-memory-access-are-coalesced">2. Ensure memory access are coalesced</h2>
 <h3 id="background">Background</h3>
 <h3 id="profiler-diagnosis_1">Profiler diagnosis</h3>
-<h3 id="advices_1">Advices</h3>
+<h3 id="advices">Advices</h3>
 <p>Think about your data Layout Kokkos layout conspiracy The granularity of memory accesses: lost bytes</p>
 <h2 id="3-minimize-redundant-math-operation-use-cheap-arithmetics">3. Minimize redundant math operation, use cheap arithmetics</h2>
 <h3 id="background_1">Background</h3>
 <h3 id="profiler-diagnosis_2">Profiler diagnosis</h3>
-<h3 id="advices_2">Advices</h3>
+<h3 id="advices_1">Advices</h3>
 <p>FMA, / vs *, unroll loop for int computation might need to template Math can be a bottleneck  Do smarter math</p>
 <h2 id="4-understanding-occupancy">4. Understanding occupancy</h2>
 <h3 id="background_2">Background</h3>
 <h3 id="profiler-diagnosis_3">Profiler diagnosis</h3>
-<h3 id="advices_3">Advices</h3>
+<h3 id="advices_2">Advices</h3>
 <p>Hide latency The occupancy trap, ILP, hide latency reduce Register usage
 Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches</p>
 <h2 id="5-avoid-the-use-of-local-memory">5. Avoid the use of <em>Local memory</em></h2>
 <h3 id="background_3">Background</h3>
 <h3 id="profiler-diagnosis_4">Profiler diagnosis</h3>
-<h3 id="advices_4">Advices</h3>
+<h3 id="advices_3">Advices</h3>
 <p>Local memory is SLOW
 Why does it spills + ref a la precedente section
 How to avoid stack usage
@@ -335,7 +418,7 @@ attention aux tableaux statiques</p>
 <h2 id="6-avoid-thread-divergence">6. Avoid thread divergence</h2>
 <h3 id="background_4">Background</h3>
 <h3 id="profiler-diagnosis_5">Profiler diagnosis</h3>
-<h3 id="advices_5">Advices</h3>
+<h3 id="advices_4">Advices</h3>
 <p>The SIMD pattern, masking templating</p>
 <h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
