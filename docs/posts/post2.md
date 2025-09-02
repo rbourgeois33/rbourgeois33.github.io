@@ -38,9 +38,11 @@ One result that I like a lot is the one presented in [the second CS267 lecture](
     - $f=$ number of arithmetic operations to complete the algorithm,
 
 
-We can then define $CI_{\text{implem}}=\frac{f}{m}$, a property  **of the implementation of the algorithm** that is called *the computational intensity*.It is the average number of flops per slow memory access. While the previously defined FPL factor, **a property of the machine**, is just given as $FPL_{\text{hardware}}=\frac{t_m}{t_f}$.
+We can then define $CI_{\text{implem}}=\frac{f}{m}$, a property  **of the implementation of the algorithm** that is called *the computational intensity*. It is the average number of flops per slow memory access. While the previously defined FPL factor, **a property of the machine**, is just given as $FPL_{\text{hardware}}=\frac{t_m}{t_f}$.
 
 **Note:** Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~an order of magnitude difference in bandwithd. CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierachies are omnipresent. As a result, the advices presented here also help CPU performance !
+
+**Note:** It could be argued that $f$ and $m$ are runtime properties of an implementation of an algorithm, but this is getting quite tedious ! In fact, I am starting to believe that CPU optimisation is harder than GPU optimisation because the gap between the implementation and the runtime is wider. In GPU programming, you are writing natively SIMD code, and you can event control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler does a good job of doing what you want it to do.
 
 ## Getting good performance
 
