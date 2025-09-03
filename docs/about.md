@@ -2,11 +2,11 @@ Hello world ! This is my first blog. I'm Rémi Bourgeois, PhD. I am a researcher
 
 My research / engineering interests include:
 
-- GPU kernel / application optimization,
-- Using / picking GPU-enabled linear algebra libraries wisely,
-- Finite volume methods, MHD convection see [my thesis !](https://theses.hal.science/tel-04732720/),
-- Continuous integration (gitlab / github)
-- Communication avoiding algorithms,
+- GPU kernel / application optimization.
+- Using / picking GPU-enabled linear algebra libraries wisely.
+- Finite volume methods, MHD convection see [my PhD thesis on the subject !](https://theses.hal.science/tel-04732720/)
+- Continuous integration (gitlab / github).
+- Communication avoiding algorithms.
 - experimenting with reduced precision.
 
 The opinions expressed here are only mine, and do not reflect the opinions of CEA. Moreover, I am very prone to errors and quick conclusion. If you spot one, feel free to reach and discuss !

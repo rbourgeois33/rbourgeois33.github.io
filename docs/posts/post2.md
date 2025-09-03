@@ -1,4 +1,5 @@
 # The cost of communications
+![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&label=Visits)
 ## Disclaimer
 This post was originally supposed to be a short introduction within [my first post on GPU kernel optimization](post1.md), but then I realized that I liked to talk too much about it and went out of scope. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on YouTube, where you can find **everything** that I explain here.
 
