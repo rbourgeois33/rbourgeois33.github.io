@@ -19,3 +19,8 @@ markdown_extensions:
 extra_javascript:
   - https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js
 
+plugins:
+  - search
+  - git-revision-date-localized:
+      type: timeago  # or "full" for full date format
+      fallback_to_build_date: true

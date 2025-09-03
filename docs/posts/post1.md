@@ -1,4 +1,5 @@
 # (WIP) Six basic performance advices for porting kernels to the GPU.
+_Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
 
 ## 0. Introduction

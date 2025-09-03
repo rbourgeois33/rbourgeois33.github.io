@@ -1,5 +1,7 @@
 # The cost of communications
+_Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&label=Visits)
+
 ## Disclaimer
 This post was originally supposed to be a short introduction within [my first post on GPU kernel optimization](post1.md), but then I realized that I liked to talk too much about it and went out of scope. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on YouTube, where you can find **everything** that I explain here.
 
@@ -31,8 +33,8 @@ As we can see, the FPL has been varying between 50 and 100. This is really large
 I want to clarify some conventions, and push for the use of clear terminologies when talking about numerical algorithms. Let's take some time to realize that the following terms refer to very different things (inspired by [Mark Hoemmen's PhD introduction](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.pdf)):
 
 - **An operation** is a theoretical construction for data transformation e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.
-- **An algorithm:** (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results (in exact arithmetic) for a given operation because of e.g. different convergence rate / error threshold.
-- **An implementation:** (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details.
+- **An algorithm:** (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.
+- **An implementation:** (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.
 
 ## A simple memory model
 
@@ -73,7 +75,7 @@ A big chunk of the implementation work is to force the compile-runtime pipeline 
 
 Let's consider the example of a very generic operation: **dense matrix multiplication**, $C=A.B$ (the 1st homework of [CS267](https://sites.google.com/lbl.gov/cs267-spr2022) and topic of the 2nd and 3rd lectures). 
 
-**Note** matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.
+<!--**Note** matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.-->
 
 If three $n\times n$ matrices fits in fast memory, we know that that we need to load/store only $3n^2$ words (2 matrix read, 1 matrix write) from slow memory, and perform $2n^3$ operations (one dot product per element of C, each dot product being $n$ multiply and $n$ add) with a resulting $CI_{\text{ideal}}^{\text{matmul}}=\frac{3n}{2}$. The bigger $n$ is, the closer we get from ideal performance. However, as $n$ grows, it is clear that the problem does not fit in fast memory ($3n^2>M$ eventually). A naive implementation of matrix multiply is:
 ```python
