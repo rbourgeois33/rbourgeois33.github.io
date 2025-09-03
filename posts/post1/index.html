@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Six basic performance advices for porting kernels to the GPU - My Blog</title>
+    <title>(WIP) Six basic performance advices for porting kernels to the GPU - Rémi Bourgeois's blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Six basic performance advices for porting kernels to the GPU";
+        var mkdocs_page_name = "(WIP) Six basic performance advices for porting kernels to the GPU";
         var mkdocs_page_input_path = "posts/post1.md";
         var mkdocs_page_url = null;
       </script>
@@ -40,7 +40,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href="../.." class="icon icon-home"> My Blog
+          <a href="../.." class="icon icon-home"> Rémi Bourgeois's blog
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
@@ -49,9 +49,17 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Six basic performance advices for porting kernels to the GPU</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">(WIP) Six basic performance advices for porting kernels to the GPU</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#0-introduction">0. Introduction</a>
         <ul>
@@ -141,6 +149,10 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../post3/">(WIP) Testing mixed precision at runtime with verrou</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../post4/">(WIP) Scheduling different jobs on the same runner with Gitlab's CI</a>
+                  </li>
               </ul>
       </div>
     </div>
@@ -149,7 +161,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../..">My Blog</a>
+          <a href="../..">Rémi Bourgeois's blog</a>
         
       </nav>
       <div class="wy-nav-content">
@@ -157,7 +169,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Posts</li>
-      <li class="breadcrumb-item active">Six basic performance advices for porting kernels to the GPU</li>
+      <li class="breadcrumb-item active">(WIP) Six basic performance advices for porting kernels to the GPU</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -166,10 +178,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="six-basic-performance-advices-for-porting-kernels-to-the-gpu">Six basic performance advices for porting kernels to the GPU.</h1>
+                <h1 id="wip-six-basic-performance-advices-for-porting-kernels-to-the-gpu">(WIP) Six basic performance advices for porting kernels to the GPU.</h1>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
-<p>Hello world ! This is my first blog post. I'm Rémi Bourgeois, PhD. I am a researcher engineer working at the French Atomic Energy Comission (CEA). I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC (multi-GPU) CFD code that serves as a basis for many research/industrial applications.</p>
 <p>I was hired by CEA to join the porting effort of this legacy code to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! As I went and optimized some kernels, something struck me:</p>
 <p><strong>The nature of the task of porting code to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong></p>
 <p>The goal of this blogpost is to give you <em>basic</em>, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a <em>reasonable</em> performance.</p>
@@ -520,6 +531,7 @@ Why does it spills </p>
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../.." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../post2/" class="btn btn-neutral float-right" title="The cost of communications">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -542,6 +554,8 @@ Why does it spills </p>
   <div class="rst-versions" role="note" aria-label="Versions">
   <span class="rst-current-version" data-toggle="rst-current-version">
     
+    
+      <span><a href="../.." style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../post2/" style="color: #fcfcfc">Next &raquo;</a></span>
