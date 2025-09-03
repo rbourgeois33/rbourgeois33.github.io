@@ -17,10 +17,10 @@ void apply_kernel(Kokkos::View<float**> A,  Kokkos::View<float**> B, Kokkos::Vie
         for (int k = 0; k < 10; k++){
             for (int dir = 0; dir < dim; dir++){
                 for (int dir2 = 0; dir2 < dim; dir2++){
-                    Atmp[indir[dir]] += Btmp[dir2];
+                    Atmp[indir[dir]] += Btmp[dir2]; //Not OK ! Compiler cannot resolve this. It cannot compute the value of index. tmp now resides in local memory
                 }
             }
-        } 
+        }  
 
         for (int dir = 0; dir < dim; dir++){
             A(i,dir) = Atmp[dir];
