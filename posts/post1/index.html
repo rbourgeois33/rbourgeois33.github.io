@@ -65,6 +65,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#before-we-start">Before we start</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#detect-and-avoid-stack-usage">Detect and avoid stack usage</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</a>
@@ -93,6 +95,16 @@
     </li>
         </ul>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-avoid-the-use-of-local-memory">2. Avoid the use of local memory</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#what-is-local-memory">What is local memory.</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#detect-and-avoid-stack-usage_1">Detect and avoid stack usage</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#detect-and-avoid-register-spilling">Detect and avoid register spilling</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#3-minimize-redundant-math-operation-use-cheap-arithmetics">3. Minimize redundant math operation, use cheap arithmetics</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#background">Background</a>
@@ -113,23 +125,13 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#5-avoid-the-use-of-local-memory">5. Avoid the use of Local memory</a>
+    <li class="toctree-l2"><a class="reference internal" href="#6-avoid-thread-divergence">6. Avoid thread divergence</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#background_2">Background</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_4">Profiler diagnosis</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#advices_3">Advices</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#6-avoid-thread-divergence">6. Avoid thread divergence</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_3">Background</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_5">Profiler diagnosis</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_4">Advices</a>
     </li>
         </ul>
     </li>
@@ -176,7 +178,6 @@
 <li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstruous kernel.</li>
 <li>A 20-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
 <li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU)</li>
-<li>TODO: add ncu reports</li>
 </ul>
 <p>By <em>reasonable</em> I do not mean that you will get <em>optimal</em> performance. In fact, I will not go over what I consider to be <em>advanced</em> optimization advices such as the use of </p>
 <ul>
@@ -197,7 +198,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <h3 id="disclaimers">Disclaimers</h3>
 <p>If you think I wrote something that is wrong, or misleading please let me know !</p>
 <p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.nvidia.com/nsight-systems">nsight systems</a> (nsys) and <a href="https://developer.nvidia.com/nsight-compute">nsight compute</a> (ncu). However, note that AMD provides similar profilers (altough, at the time I am writing this, rocm's kernel profilers seem a lot less user friendly), and that the advices that I give here are general enought so that they apply for GPUs from both vendors.</p>
-<p>Moreover, I will use Kokkos as the programming model, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
+<p>Moreover, I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enought so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
 <h3 id="pre-requisits">Pre-requisits</h3>
 <p>In this small tutorial, I will assume that you are already familiar with:</p>
 <ul>
@@ -210,7 +211,7 @@ The advices are general enough so that they should allow speedups on all cards f
 </li>
 <li>Basic GPU architecture, in particular:<ul>
 <li>Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.</li>
-<li>What are CUDA threads / blocks, global memory. You can be confused about what is local memory.</li>
+<li>What are CUDA threads / blocks, global memory. <em>You can be confused about what is local memory</em>.</li>
 <li>Some ressources on GPU architecture / CUDA programming:<ul>
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou</a></li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella</a></li>
@@ -252,6 +253,27 @@ The advices are general enough so that they should allow speedups on all cards f
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the 6 advices, I invite you to read <a href="../post2/">my post on the cost of communications</a> that is a good, unesseray long introduction for advices 1. and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk on communication-avoiding algorithms</a>. </p>
 <p>All sample code and ncu reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were ran on my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
+<p>Lastly, here is a refresher on the separation of hardware and software concepts when programming Nvidia GPUs with CUDA:
+<img alt="alt text" src="../image-14.png" />
+<strong>Figure 8:</strong> Sofware / harware memory hierarchy of an Nvidia GPU. <a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">source</a>. </p>
+<p>The GPU hardawre is organized as follows:</p>
+<ul>
+<li>A GPU is made of an aggregation of Streaming Multiprocessors (SM) that contains the computational units. This is where the computations are done. Instructions are scheduled as so-called warps of size 32.</li>
+<li>The DRAM (slowest memory access, limited by the bandwith), accessible by all Streaming Multiprocessors (SM),</li>
+<li>the L2 cache, much smaller than the DRAM but faster, accessible visible by all SMs,</li>
+<li>One L1 cache by SM, much smaller than the L2 but faster,</li>
+<li>A register file per SM, much smaller than the L1 but the fastest.</li>
+</ul>
+<p>The software is organized as follows:</p>
+<ul>
+<li>Threads are uniquely defined sequences of operations defined by the CUDA kernels. They reside on the SM's.</li>
+<li>Blocks of threads. Threads of a block only reside in the same SM.</li>
+<li>Global memory. Visible by all threads, may reside in DRAM, L2 or L1 (potentially very slow !)</li>
+<li>Shared memory. Visible by all threads of a block, managed by the developer. Resides in L1.</li>
+<li><strong>Local memory.</strong> Private to a thread, may reside in DRAM, L2 or L1 (potentially very slow !). Local memory includes both register spilling and stack usage. More on that in section 2.</li>
+<li>Registers. Private to a thread, resides in the SM's register file (the fastest !). </li>
+</ul>
+<h3 id="detect-and-avoid-stack-usage">Detect and avoid stack usage</h3>
 <h2 id="1-minimise-redundant-global-memory-accesses">1. Minimise redundant global memory accesses</h2>
 <p>On an Nvidia GPU, any request to global memory may end up fetching data from:</p>
 <ul>
@@ -263,7 +285,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <h3 id="1-minimise-redundant-thread-level-global-memory-accesses">1. Minimise redundant thread-level global memory accesses</h3>
 <h4 id="a-first-simple-example-temporary-register-storages">A first simple example, temporary register storages</h4>
 <p>Let's considers at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1.cpp">sample-1.cpp</a> where we create two Device views:
-If you are not familiar with Kokkos views, in this context, they are just a container for a vector that resides on the GPU.</p>
+If you are not familiar with Kokkos views, in this context, they are just containers for vectors that resides on the GPU.</p>
 <pre><code class="language-c++">const int size = 1&lt;&lt;27;
 Kokkos::View&lt;float*&gt; A(&quot;A&quot;, size);
 Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
@@ -407,59 +429,77 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 </code></pre>
 <p>I will not go through the ncu reports for this second example as the behavior is really similar to sample-1, but feel free to look a them yourself. The speedup obtained is 75% which is not surpising, since I pick the examples.</p>
 <h3 id="minimize-block-level-redundant-memory-accesses-shared-memory">Minimize block-level redundant memory accesses: <code>shared memory</code></h3>
-<p>If you spot that nighbouring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about <code>shared-memory</code>, to reduce redundant <strong>block-level</strong> memory accesses. <code>shared-memory</code> is essentially a portion of the L1 cache managed by the user. L1 cache is the fastest cache, right before registers, that is shared by threads of a block. But beware, using it means that you think you are smarter that the runtime ! :).</p>
+<p>If you spot that nighbouring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about <code>shared-memory</code>, to reduce redundant <strong>block-level</strong> memory accesses. <code>shared-memory</code> is essentially a portion of the L1 cache managed by the user. L1 cache is the fastest cache, right before registers, that is shared by threads of a block. But beware, using it means that you think you can do a better job than the runtime ! :). To use shared memory in Kokkos, look at <a href="https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html">Hierarchical Parallelism</a>.</p>
 <h3 id="minimise-redundant-kernel-level-memory-accesses-coalescing">Minimise redundant kernel-level memory accesses: coalescing</h3>
 <h4 id="sectors-and-cache-line">sectors and cache line</h4>
-<p>When using Nvidia GPUs, threads are packed in so called warps of 32 threads which execute instructions simultaneously (SIMD). In the same way, when a memory request if performed, (like load one FP64 number from global memory), it is not done alone, but in packs of so called <em>sectors</em> of 32 bytes (e.g. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:</p>
+<p>When using Nvidia GPUs, threads are packed in so-called warps of 32 threads which execute instructions simultaneously (SIMD). In the same way, when a memory request if performed, (like load one FP64 number from global memory), it is not done for a single one, but in packs of so-called <em>sectors</em> of 32 bytes (i.e. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:</p>
 <p><img alt="alt text" src="../image-9.png" />
 <strong>Figure 6:</strong> Coalesced memory accesses <a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">Source</a>. </p>
 <p>In this ideal case, each thread is loading a FP64 number. There are 32 threads in a warps so this amount to 32 FP64 number, e.g. 256 bytes which is 8 sectors. This is very efficient because 256 bytes are loaded, and 256 bytes are used: the bandwith of the GPU is fully used. Let's now look at the worst case scenario:</p>
 <p><img alt="alt text" src="../image-10.png" />
 <strong>Figure 7:</strong> strided memory accesses. Adapted from <a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">source</a>. </p>
-<p>In this case, each thread requires is also loading a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own a whole sector is loaded for each one of these. As a result 32 sectors = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the bandwitdh is used, and the case gets worst if you are working with smaller datatypes.</p>
+<p>In this case, each thread requires is also loading a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own", a whole sector is loaded for each. As a result 32 sectors = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the bandwitdh is used, and the case gets worst if you are working with smaller datatypes.</p>
 <h4 id="profiler-diagnosis_1">Profiler diagnosis</h4>
-<p>This is actually shown in the memoy workload analysis. For example, for <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>, we can see:
+<p>The ratio of bytes loaded to bytes used per memory request is actually shown in the memoy workload analysis. For example, for <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>, we can see:
 <img alt="alt text" src="../image-12.png" />
 <strong>Figure 5:</strong> DRAM Global Load Access Pattern warning for <code>sample-1-fixed.cpp</code>.</p>
-<p>where we see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated algorithms, such as unstructured mesh, this can be very bad. This section of ncu is helpful to detect such issues.</p>
+<p>where we see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of ncu is helpful to detect that precise issue.</p>
 <h4 id="advices">Advices</h4>
-<p>These observation should make you want to think about your data layout. In particular, <strong>you should organize your data so that neighbouring threads are working on neighbouring data</strong>. For example, this means that there is not one good general answer on which storage is better for a dense matrix, row-major or column major. In the same way, there is no definitive better answer to the debate Array of Structure vs. Structure of Array. It all depends on what you will be doing with the you data, how you will iterate over it. In other words, <strong>match your data layout with your iteration layout</strong>. You will hear people say things like <em>"LayoutLeft (column-major) is best on GPU, LayoutRight (row-major) is best on CPU"</em>. This is <strong>not</strong> a general truth. It might be the case for specific codes that work on arrays of specific size, for instance <code>A[M][N]</code> with <span class="arithmatex">\(M\gg N\)</span> and a specific type of operations on it. In particular if implementation of the kernels differ significantly between CPU and GPU. But this cannot be taught as a generality. Let's look at an example.</p>
+<p>These observations should make you want to think about your data layout. In particular, <strong>you should organize your data so that neighbouring threads are working on neighbouring data</strong>. This means that there is not one good general answer on which storage is better for a dense matrix, row-major or column-major. If you are doing matrix-vector product, sure, row-major is better as it will be more cache friendly. If you do matrix-transpose-vector product, you want column-major. In the same way, there is no definitive better answer to the debate Array of Structure vs. Structure of Array. It all depends on what you will be doing with the you data, how you will iterate over it. In other words, <strong>match your data layout with your iteration layout</strong>. You will hear people say things like <em>"LayoutLeft (column-major) is best on GPU, LayoutRight (row-major) is best on CPU"</em>. This is <strong>not</strong> a general truth.<!--- It might be the case for specific codes that work on arrays of specific size, for instance <code>A[M][N]</code> with <span class="arithmatex">\(M\gg N\)</span> and a specific type of operations on it. But this cannot be taught as a generality  ---> Let's look at an example:</p>
 <p>Consider a matrix <code>A</code> of size, <code>NxN</code> and the following two kernels:</p>
 <ol>
 <li>compute <code>col</code>, a vector of <code>N</code> elements defined as the sum of each columns of <code>A</code>, by assigning each column to a thread,</li>
 <li>compute <code>row</code>, a vector of <code>N</code> elements defined as the sum of each rows of <code>A</code>, by assigning each row to a thread.</li>
 </ol>
 <p><strong>Note:</strong> This is quite a bad way to parallelize this computation.</p>
-<p>For kernel 1, storing <code>A</code> as column-major is better. Each thread is accessing a column which is a coalesced memory segment. If one uses row-major storage, we can expect terrible performance. The opposite argument applies for kernel 2. It will be fast for LayoutRight storage, and slow for LayoutLeft. In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-3.cpp">sample-3.cpp</a>, we perform algorithms 1 and 2 on a LayoutLeft Kokkos View:</p>
+<p>For kernel 1, storing <code>A</code> as column-major is better. Each thread is accessing a column which is a coalesced memory segment. If one uses row-major storage, we can expect terrible performance. The opposite argument applies for kernel 2. It will be fast for LayoutRight storage, and slow for LayoutLeft. In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-3.cpp">sample-3.cpp</a>, we perform kernels 1 and 2 on a LayoutLeft Kokkos View:</p>
 <pre><code class="language-c++">int N = 10000; 
-Kokkos::View&lt;float**, Kokkos::LayoutLeft&gt;  A_LL(&quot;A_LL&quot;, N, N);       
+Kokkos::View&lt;float**, Kokkos::LayoutLeft&gt;   A_LL(&quot;A_LL&quot;, N, N);      
+Kokkos::View&lt;float**, Kokkos::LayoutRight&gt;  A_LR(&quot;A_LR&quot;, N, N);       
 Kokkos::View&lt;float*&gt; row_sum(&quot;row_sum&quot;, N); 
-Kokkos::View&lt;float*&gt; col_sum(&quot;col_sum&quot;, N); 
+
+// [...]
 
 Kokkos::parallel_for(&quot;RowSumLL&quot;, N, KOKKOS_LAMBDA(int i) {
     float sum = 0.0;
     for (int j = 0; j &lt; N; j++) {
-            sum += A_LL(i,j);
+        sum += A_LL(i,j);
         }
-        row_sum(i) = sum;
+    row_sum(i) = sum;
 });
 
-Kokkos::parallel_for(&quot;ColSumLL&quot;, N, KOKKOS_LAMBDA(int j) {
+Kokkos::parallel_for(&quot;RowSumLR&quot;, N, KOKKOS_LAMBDA(int i) {
     float sum = 0.0;
-        for (int i = 0; i &lt; N; i++) {
-            sum += A_LL(i,j);
-        }
-        col_sum(j) = sum;
+    for (int j = 0; j &lt; N; j++) {
+        sum += A_LR(i,j);
+    }
+    row_sum(i) = sum;
 });
 </code></pre>
 <p>The report can be found at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-3-fixed">sample-3.ncu-rep</a> in which we can see that:</p>
 <ul>
-<li><code>ColSumLL</code> runs in 0.53 ms,</li>
+<li><code>ColSumLL</code> runs in 0.52 ms,</li>
 <li><code>RowSumLL</code> runs in 1.14ms (+120%), and the memory workload analysis section says: <em>"On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread"</em>. Moreover, the L1 cache is used a lot, whereas <code>ColSumLL</code> does not use it at all.</li>
 </ul>
-<p>As you see, the best layout depends on what <em>operation</em> you plan on doing on your data, and <em>how</em> you plan on doing it. Another example is matrix multiplication where the best layout is cache/register-fitting blocked layout, <em>because</em> the best algorithm is cache/register-fitting blocked matrix multiplication. If you were to implement the naive version of matrix multiply <code>C=AB</code> where, for each element of <code>C</code>, you load a row of <code>A</code> and a column of <code>B</code> and perform the dot product, the best layout is storing <code>A/B</code> in row/column major order respectively. For unstructured meshes, I recommend using <a href="https://en.wikipedia.org/wiki/Z-order_curve">Z-order curve</a> re-ordering of the mesh-element. For our CFD code TRUST, this enbaled an overall +20% speedup due to a better coalescing.</p>
-<p><strong>Note:</strong> Non coalesced write are worst in performance that non coalesced read, as a write needs to invalidate caches, we say that writes are "cache-through". A single non coalesced write can ivalidate a sector in L1, and L2, requireing the data to be fetched potentially all the way from DRAM for the next load.</p>
+<p>As you see, the best layout depends on what <em>operation</em> you plan on doing on your data, and <em>how</em> you plan on doing it. Another example is matrix multiplication where the best layout is cache/register-fitting blocked layout, <em>because</em> the best algorithm is cache/register-fitting blocked matrix multiplication. If you were to implement the naive version of matrix multiply <code>C=AB</code> where, for each element of <code>C</code>, you load a row of <code>A</code> and a column of <code>B</code> and perform the dot product, the best layout is storing <code>A/B</code> in row/column-major order respectively. For simulations on unstructured meshes, I recommend using <a href="https://en.wikipedia.org/wiki/Z-order_curve">Z-order curve</a> re-ordering of the mesh-element. For our CFD code TRUST, this enabled an overall +20% speedup due to a better coalescing.</p>
+<p><strong>Note:</strong> Non-coalesced write are worst in performance that non-coalesced read, as a write needs to invalidate caches, we say that writes are "cache-through". A single non-coalesced write can invalidate a sector in L1, and L2, requireing the data to be fetched potentially all the way from DRAM for the next load.</p>
 <p><strong>Note:</strong> The default layout for multidimennal views in Kokkos is LayoutLeft on device, and LayoutRight on host. I believe this is due to historical reasons; Algorithms from the Trilinos library that is built upon Kokkos runs more efficiently this way. But again, this is application-specific.</p>
+<h2 id="2-avoid-the-use-of-local-memory">2. Avoid the use of local memory</h2>
+<h3 id="what-is-local-memory">What is local memory.</h3>
+<p>As we saw in the introduction, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory can be used in two cases:</p>
+<ul>
+<li>register spilling</li>
+<li>stack usage. </li>
+</ul>
+<p>Which correspond </p>
+<h3 id="detect-and-avoid-stack-usage_1">Detect and avoid stack usage</h3>
+<ul>
+<li>ref a la precedente section How to avoid stack usage attention aux tableaux statiques</li>
+</ul>
+<h3 id="detect-and-avoid-register-spilling">Detect and avoid register spilling</h3>
+<p>Hide latency The occupancy trap, ILP, hide latency reduce Register usage
+Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches
+Why does it spills </p>
 <h2 id="3-minimize-redundant-math-operation-use-cheap-arithmetics">3. Minimize redundant math operation, use cheap arithmetics</h2>
 <h3 id="background">Background</h3>
 <h3 id="profiler-diagnosis_2">Profiler diagnosis</h3>
@@ -469,20 +509,10 @@ Kokkos::parallel_for(&quot;ColSumLL&quot;, N, KOKKOS_LAMBDA(int j) {
 <h3 id="background_1">Background</h3>
 <h3 id="profiler-diagnosis_3">Profiler diagnosis</h3>
 <h3 id="advices_2">Advices</h3>
-<p>Hide latency The occupancy trap, ILP, hide latency reduce Register usage
-Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches</p>
-<h2 id="5-avoid-the-use-of-local-memory">5. Avoid the use of <em>Local memory</em></h2>
+<h2 id="6-avoid-thread-divergence">6. Avoid thread divergence</h2>
 <h3 id="background_2">Background</h3>
 <h3 id="profiler-diagnosis_4">Profiler diagnosis</h3>
 <h3 id="advices_3">Advices</h3>
-<p>Local memory is SLOW
-Why does it spills + ref a la precedente section
-How to avoid stack usage
-attention aux tableaux statiques</p>
-<h2 id="6-avoid-thread-divergence">6. Avoid thread divergence</h2>
-<h3 id="background_3">Background</h3>
-<h3 id="profiler-diagnosis_5">Profiler diagnosis</h3>
-<h3 id="advices_4">Advices</h3>
 <p>The SIMD pattern, masking templating</p>
 <h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
