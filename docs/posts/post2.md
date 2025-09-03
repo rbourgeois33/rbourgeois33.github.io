@@ -32,7 +32,7 @@ As we can see, the FPL has been varying between 50 and 100. This is really large
 
 I want to clarify some conventions, and push for the use of clear terminologies when talking about numerical algorithms. Let's take some time to realize that the following terms refer to very different things (inspired by [Mark Hoemmen's PhD introduction](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.pdf)):
 
-- **An operation** is a theoretical construction for data transformation e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.
+- **An operation** is a theoretical construction for data transformation that takes an input, and produces an output, e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.
 - **An algorithm:** (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.
 - **An implementation:** (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.
 
@@ -47,7 +47,7 @@ One result that I like a lot is the one presented in [the second CS267 lecture](
     - $t_f=$ time per arithmetic operation i.e. the inverse of the FLOPS in Table 1.
 - Assume an implementation of an algorithm, for which the runtime on the machine is characterized by:
     - $m=$ number of words moved between fast and slow memory to complete the algorithm,
-    - $f=$ number of arithmetic operations to complete the algorithm,
+    - $f=$ number of arithmetic operations to complete the algorithm.
 
 We can then define $CI_{\text{runtime}}=\frac{f}{m}$, a property  **of the runtime of an implementation of the algorithm** that is called *the computational intensity*. It is the average number of flops per slow memory access. While the previously defined FPL factor, **a property of the machine**, is just given as $FPL_{\text{hardware}}=\frac{t_m}{t_f}$.
 
