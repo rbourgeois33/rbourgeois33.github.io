@@ -60,7 +60,7 @@
               </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../post1/">(WIP) Six basic performance advices for porting kernels to the GPU</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../post1/">(WIP) Five basic performance advices for porting kernels to the GPU</a>
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">The cost of communications</a>
     <ul class="current">
@@ -110,7 +110,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 14:03:55 UTC"><span class="timeago" datetime="2025-09-03T14:03:55+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 14:03:55 UTC">2025-09-03</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 16:07:20 UTC"><span class="timeago" datetime="2025-09-03T16:07:20+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 16:07:20 UTC">2025-09-03</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>everything</strong> that I explain here.</p>
@@ -167,7 +167,7 @@
 <h2 id="some-naming-conventions">Some naming conventions</h2>
 <p>I want to clarify some conventions, and push for the use of clear terminologies when talking about numerical algorithms. Let's take some time to realize that the following terms refer to very different things (inspired by <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.pdf">Mark Hoemmen's PhD introduction</a>):</p>
 <ul>
-<li><strong>An operation</strong> is a theoretical construction for data transformation e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.</li>
+<li><strong>An operation</strong> is a theoretical construction for data transformation that takes an input, and produces an output, e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.</li>
 <li><strong>An algorithm:</strong> (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.</li>
 <li><strong>An implementation:</strong> (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.</li>
 </ul>
@@ -183,7 +183,7 @@
 </li>
 <li>Assume an implementation of an algorithm, for which the runtime on the machine is characterized by:<ul>
 <li><span class="arithmatex">\(m=\)</span> number of words moved between fast and slow memory to complete the algorithm,</li>
-<li><span class="arithmatex">\(f=\)</span> number of arithmetic operations to complete the algorithm,</li>
+<li><span class="arithmatex">\(f=\)</span> number of arithmetic operations to complete the algorithm.</li>
 </ul>
 </li>
 </ul>
@@ -247,7 +247,7 @@ for i in range(N):
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../post1/" class="btn btn-neutral float-left" title="(WIP) Six basic performance advices for porting kernels to the GPU"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../post1/" class="btn btn-neutral float-left" title="(WIP) Five basic performance advices for porting kernels to the GPU"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../post3/" class="btn btn-neutral float-right" title="(WIP) Testing mixed precision at runtime with verrou">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
