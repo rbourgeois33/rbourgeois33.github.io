@@ -15,7 +15,7 @@ void apply_kernel(Kokkos::View<float**> A,  Kokkos::View<float**> B, int size){
         for (int k = 0; k < 10; k++){
             for (int dir = 0; dir < dim; dir++){
                 for (int dir2 = 0; dir2 < dim; dir2++){
-                    Atmp[dir] += Btmp[dir];
+                    Atmp[dir] += Btmp[dir2];
                 }
             }
         }
