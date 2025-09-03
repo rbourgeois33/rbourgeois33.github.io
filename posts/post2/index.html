@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../css/timeago.css" rel="stylesheet" />
     
       <script>
         // Current page data
@@ -109,7 +110,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 14:03:55 UTC"><span class="timeago" datetime="2025-09-03T14:03:55+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 14:03:55 UTC">2025-09-03</span></em>.<br />
+<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>everything</strong> that I explain here.</p>
 <p><strong>Note</strong> The terms <em>communications</em> and <em>memory transfers</em> will be used interchangeably. Also in the present context, a <em>word</em> refers to a single FP64 number.</p>
@@ -166,8 +168,8 @@
 <p>I want to clarify some conventions, and push for the use of clear terminologies when talking about numerical algorithms. Let's take some time to realize that the following terms refer to very different things (inspired by <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.pdf">Mark Hoemmen's PhD introduction</a>):</p>
 <ul>
 <li><strong>An operation</strong> is a theoretical construction for data transformation e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.</li>
-<li><strong>An algorithm:</strong> (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results (in exact arithmetic) for a given operation because of e.g. different convergence rate / error threshold.</li>
-<li><strong>An implementation:</strong> (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details.</li>
+<li><strong>An algorithm:</strong> (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.</li>
+<li><strong>An implementation:</strong> (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.</li>
 </ul>
 <h2 id="a-simple-memory-model">A simple memory model</h2>
 <p>One result that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> where the following simple memory model is proposed:</p>
@@ -201,7 +203,8 @@
 </ul>
 <p>A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(m\)</span> that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can event control the L1 cache via <code>shared</code> memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me.</p>
 <p>Let's consider the example of a very generic operation: <strong>dense matrix multiplication</strong>, <span class="arithmatex">\(C=A.B\)</span> (the 1st homework of <a href="https://sites.google.com/lbl.gov/cs267-spr2022">CS267</a> and topic of the 2nd and 3rd lectures). </p>
-<p><strong>Note</strong> matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.</p>
+<!--**Note** matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.-->
+
 <p>If three <span class="arithmatex">\(n\times n\)</span> matrices fits in fast memory, we know that that we need to load/store only <span class="arithmatex">\(3n^2\)</span> words (2 matrix read, 1 matrix write) from slow memory, and perform <span class="arithmatex">\(2n^3\)</span> operations (one dot product per element of C, each dot product being <span class="arithmatex">\(n\)</span> multiply and <span class="arithmatex">\(n\)</span> add) with a resulting <span class="arithmatex">\(CI_{\text{ideal}}^{\text{matmul}}=\frac{3n}{2}\)</span>. The bigger <span class="arithmatex">\(n\)</span> is, the closer we get from ideal performance. However, as <span class="arithmatex">\(n\)</span> grows, it is clear that the problem does not fit in fast memory (<span class="arithmatex">\(3n^2&gt;M\)</span> eventually). A naive implementation of matrix multiply is:</p>
 <pre><code class="language-python">for i in range(n):
     #load A[i,:] from fast memory (n words)
@@ -279,6 +282,8 @@ for i in range(N):
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
+      <script src="../../js/timeago.min.js"></script>
+      <script src="../../js/timeago_mkdocs_material.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>

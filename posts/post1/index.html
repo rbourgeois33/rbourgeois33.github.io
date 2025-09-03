@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../css/timeago.css" rel="stylesheet" />
     
       <script>
         // Current page data
@@ -179,7 +180,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="wip-six-basic-performance-advices-for-porting-kernels-to-the-gpu">(WIP) Six basic performance advices for porting kernels to the GPU.</h1>
-<p><img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 14:03:55 UTC"><span class="timeago" datetime="2025-09-03T14:03:55+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 14:03:55 UTC">2025-09-03</span></em>.<br />
+<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
 <p>I was hired by CEA to join the porting effort of this legacy code to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! As I went and optimized some kernels, something struck me:</p>
@@ -567,6 +569,8 @@ Why does it spills </p>
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
+      <script src="../../js/timeago.min.js"></script>
+      <script src="../../js/timeago_mkdocs_material.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>
