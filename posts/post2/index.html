@@ -110,13 +110,13 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 16:07:20 UTC"><span class="timeago" datetime="2025-09-03T16:07:20+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 16:07:20 UTC">2025-09-03</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 07:04:55 UTC"><span class="timeago" datetime="2025-09-04T07:04:55+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 07:04:55 UTC">2025-09-04</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
-<p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>everything</strong> that I explain here.</p>
+<p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>almost everything</strong> that I explain here.</p>
 <p><strong>Note</strong> The terms <em>communications</em> and <em>memory transfers</em> will be used interchangeably. Also in the present context, a <em>word</em> refers to a single FP64 number.</p>
 <h2 id="hardware-trends">Hardware trends</h2>
-<p>Looking at Figure 1, memory transfers, within DRAM, or over the network, have been more expensive than (FP64) math operation since ~1992:
+<p>Looking at Figure 1, memory transfers, within DRAM, or over the network, have been more expensive than a (FP64) math operation since ~1992:
 <img alt=" " src="../image.png" />
 <strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwidth (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
 <p>The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong> for more recent hardware:</p>
@@ -188,7 +188,7 @@
 </li>
 </ul>
 <p>We can then define <span class="arithmatex">\(CI_{\text{runtime}}=\frac{f}{m}\)</span>, a property  <strong>of the runtime of an implementation of the algorithm</strong> that is called <em>the computational intensity</em>. It is the average number of flops per slow memory access. While the previously defined FPL factor, <strong>a property of the machine</strong>, is just given as <span class="arithmatex">\(FPL_{\text{hardware}}=\frac{t_m}{t_f}\)</span>.</p>
-<p><strong>Note:</strong> Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~an order of magnitude difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.</p>
+<p><strong>Note:</strong> Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~3-4x difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.</p>
 <h2 id="getting-good-performance">Getting good performance</h2>
 <p>The minimum possible time for  our algorithm is <span class="arithmatex">\(t_{\text{ideal}}=ft_f\)</span>, which is attained when the problem fits in fast memory (<span class="arithmatex">\(m&lt;M\)</span>) and no slow memory transaction are required. This implies that we don't read any initial data from slow memory nor store in it, this is never the case in practice. </p>
 <p>Let's compare this to the real time for a big enough problem <span class="arithmatex">\(t_{\text{real}}=ft_f+mt_m\)</span> which rewrites:</p>
@@ -197,7 +197,7 @@
 <h2 id="properties-of-the-runtime-vs-properties-of-an-implementation">Properties of the runtime vs. properties of an implementation</h2>
 <p>I insist on using the terminology <em>"properties of the </em><em>runtime (of an implementation (of an algorithm))</em><em>".</em> Indeed, in practice, the numbers <span class="arithmatex">\(f\)</span>, <span class="arithmatex">\(m\)</span> and <span class="arithmatex">\(CI_{\text{runtime}}=\frac{f}{m}\)</span> should not be obtained by simply computing the ratio of how much memory should be touched, and how many operation should be done ideally, optimally for a given operation. Because most real problems do not fit in cache. Instead, these numbers are a property of how the algorithm is implemented, compiled and ran.</p>
 <ul>
-<li>Performance for an operation can vary dramatically between a naive and a smart algorithm. </li>
+<li>Operation count for an operation can vary dramatically between a naive and a smart algorithm. </li>
 <li>Performance of an algorithm can vary dramatically between a naive and a smart implementation.</li>
 <li>Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between an "old, crippled, small-cached" machine and a "brand new shiny and expensive" machine.</li>
 </ul>
@@ -220,7 +220,6 @@
 </code></pre>
 <p>It has a computational intensity of <span class="arithmatex">\(CI_{\text{naive}}^{\text{matmul}}=\mathcal{O}(2)\)</span>, which is terrible (compared to the ideal value) ! On the other hand, the well-known blocked implementation that splits and iterates over <span class="arithmatex">\(b\times b\)</span> sub-blocks of the matrices has a computational intensity of  <span class="arithmatex">\(CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(b)\)</span>, assuming that the blocks fit in fast memory:</p>
 <pre><code class="language-python">#pick a block size b that fits in cache (3b^2&lt;M)
-
 N=n/b #compute block size
 
 for i in range(N):
