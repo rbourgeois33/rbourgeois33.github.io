@@ -112,7 +112,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 07:50:35 UTC"><span class="timeago" datetime="2025-09-04T07:50:35+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 07:50:35 UTC">2025-09-04</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 12:53:11 UTC"><span class="timeago" datetime="2025-09-04T12:53:11+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 12:53:11 UTC">2025-09-04</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>almost everything</strong> that I explain here.</p>
@@ -121,7 +121,7 @@
 <p>Looking at Figure 1, memory transfers, within DRAM, or over the network, have been more expensive than a (FP64) math operation since ~1992:
 <img alt=" " src="../image.png" />
 <strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwidth (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
-<p>The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong> for more recent hardware:</p>
+<p>The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong> for recent GPUs that make up for the overwhelming majority of thr computational capacity of the world's top supercomputers:</p>
 <table>
 <thead>
 <tr>
@@ -148,11 +148,25 @@
 <td style="text-align: right;">~49.9</td>
 </tr>
 <tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/radeon-instinct-mi250x.c3837">MI250x</a></td>
+<td style="text-align: right;">2021</td>
+<td style="text-align: right;">47.85</td>
+<td style="text-align: right;">3.28</td>
+<td style="text-align: right;">~116</td>
+</tr>
+<tr>
 <td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/h100-pcie-80-gb.c3899">H100</a></td>
 <td style="text-align: right;">2022</td>
 <td style="text-align: right;">25.61</td>
 <td style="text-align: right;">2.04</td>
 <td style="text-align: right;">~ 100</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/radeon-instinct-mi300a.c4296">MI300A</a></td>
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">81.72</td>
+<td style="text-align: right;">10.3</td>
+<td style="text-align: right;">~63</td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210">B200</a></td>
@@ -172,6 +186,13 @@
 <li><strong>An operation</strong> is a theoretical construction for data transformation that takes an input, and produces an output, e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.</li>
 <li><strong>An algorithm:</strong> (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.</li>
 <li><strong>An implementation:</strong> (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.</li>
+</ul>
+<p><strong>Note:</strong> When writing an algorithm, you always have to rely on building blocks. The notion of <em>instruction</em> is relative to the level of abstraction you are working with. In particular:</p>
+<ul>
+<li>If you are designing a CFD solver, solving a linear system may be seen as a single instruction/kernel.</li>
+<li>If you are designing a linear system solver, performing a vector dot-product, or a matrix-vector multiplication may be seen as a single instruction/kernel.</li>
+<li>If you are designing a vector dot-product, loading data and performing multiplication and additions may be seens as a single instruction/kernel.</li>
+<li>If you are designing a floating-point addition, register manipulation may be seens as a single instruction/kernel.</li>
 </ul>
 <h2 id="a-simple-memory-model">A simple memory model</h2>
 <p>One result that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> where the following simple memory model is proposed:</p>
