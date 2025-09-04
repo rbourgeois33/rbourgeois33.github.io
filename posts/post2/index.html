@@ -78,6 +78,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post3/">(WIP) Testing mixed precision at runtime with verrou</a>
@@ -110,7 +112,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 07:04:55 UTC"><span class="timeago" datetime="2025-09-04T07:04:55+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 07:04:55 UTC">2025-09-04</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 07:50:35 UTC"><span class="timeago" datetime="2025-09-04T07:50:35+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 07:50:35 UTC">2025-09-04</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>largely</strong> inspired by <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk</a> by Prof. James Demmel (Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his CS267 class</a> with free lectures on YouTube, where you can find <strong>almost everything</strong> that I explain here.</p>
@@ -127,7 +129,7 @@
 <th style="text-align: right;">Release Year</th>
 <th style="text-align: right;">FP64 FLOPS (TFLOPS)</th>
 <th style="text-align: right;">BW (TB/s)</th>
-<th style="text-align: right;">FPL</th>
+<th style="text-align: right;">FP64 FPL</th>
 </tr>
 </thead>
 <tbody>
@@ -201,17 +203,17 @@
 <li>Performance of an algorithm can vary dramatically between a naive and a smart implementation.</li>
 <li>Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between an "old, crippled, small-cached" machine and a "brand new shiny and expensive" machine.</li>
 </ul>
-<p>A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(m\)</span> that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can event control the L1 cache via <code>shared</code> memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me.</p>
-<p>Let's consider the example of a very generic operation: <strong>dense matrix multiplication</strong>, <span class="arithmatex">\(C=A.B\)</span> (the 1st homework of <a href="https://sites.google.com/lbl.gov/cs267-spr2022">CS267</a> and topic of the 2nd and 3rd lectures). </p>
+<p>A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(m\)</span> that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can  control the L1 cache via <code>shared</code> memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me.</p>
+<p>Let's consider the example of a very generic operation: <strong>dense matrix multiplication</strong>, <code>C+=A.B</code> (the 1st homework of <a href="https://sites.google.com/lbl.gov/cs267-spr2022">CS267</a> and topic of the 2nd and 3rd lectures). </p>
 <!--**Note** matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.-->
 
-<p>If three <span class="arithmatex">\(n\times n\)</span> matrices fits in fast memory, we know that that we need to load/store only <span class="arithmatex">\(3n^2\)</span> words (2 matrix read, 1 matrix write) from slow memory, and perform <span class="arithmatex">\(2n^3\)</span> operations (one dot product per element of C, each dot product being <span class="arithmatex">\(n\)</span> multiply and <span class="arithmatex">\(n\)</span> add) with a resulting <span class="arithmatex">\(CI_{\text{ideal}}^{\text{matmul}}=\frac{3n}{2}\)</span>. The bigger <span class="arithmatex">\(n\)</span> is, the closer we get from ideal performance. However, as <span class="arithmatex">\(n\)</span> grows, it is clear that the problem does not fit in fast memory (<span class="arithmatex">\(3n^2&gt;M\)</span> eventually). A naive implementation of matrix multiply is:</p>
+<p>If three <span class="arithmatex">\(n\times n\)</span> matrices fits in fast memory, we know that that we need to load/store only <span class="arithmatex">\(4n^2\)</span> words (3 matrix read, 1 matrix write) from slow memory, and perform <span class="arithmatex">\(2n^3\)</span> operations (one dot product per element of C, each dot product being <span class="arithmatex">\(n\)</span> multiply and <span class="arithmatex">\(n\)</span> add) with a resulting <span class="arithmatex">\(CI_{\text{ideal}}^{\text{matmul}}=\frac{n}{2}\)</span>. The bigger <span class="arithmatex">\(n\)</span> is, the closer we get from ideal performance. However, as <span class="arithmatex">\(n\)</span> grows, it is clear that the problem does not fit in fast memory (<span class="arithmatex">\(3n^2&gt;M\)</span> eventually). A naive implementation of matrix multiply is:</p>
 <pre><code class="language-python">for i in range(n):
     #load A[i,:] from fast memory (n words)
     for j in range (n): 
         #load B[:,j] from fast memory (n words)
         #read C[i,j] from fast memory (1 word)
-        C[i,j] = dot(A[i,:], B[:,j]) #(2n operations)
+        C[i,j] += dot(A[i,:], B[:,j]) #(2n+1 operations)
         #store C[i,j] in slow memory (1 word)
 
 #Total: 
@@ -231,17 +233,19 @@ for i in range(N):
             Ablock=...
             #load the ijth block from B into fast memory (bxb words)
             Bblock=...
-            Cblock += matmul(Ablock, Bblock) #naive matmul, or micro kernel that fits in cache / registers (2b^3 operations)
+            Cblock += matmul(Ablock, Bblock) #naive matmul, or micro kernel that fits in cache / registers (2b^3 + 2b^2 operations)
         #store the ijth block from C into slow memory (bxb words)
 
 #Total: 
 # m = N^2( 2b^2 + N(2b^2) ) --&gt; 2N^3b^2= 2n^3/b
-# f = N^3(2b^3) =2n^3
+# f = N^3(2b^3+2b^2)  --&gt; 2N^3b^3 = 2n^3
 </code></pre>
 <p>So, you might wonder, what should I do ? How do I know if there is a better algorithm ? Well, a theoretical upper bound on the computational intensity has been found and is given by <span class="arithmatex">\(CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(\sqrt{M})\)</span>, and if you ever write a new dense matmul implementation, you should strive to reach it. And notice ! the blocked algorithm reaches that bound. Indeed, since the blocks fit in fast memory, <span class="arithmatex">\(3b^2 &lt;M\)</span> <span class="arithmatex">\(\implies\)</span> <span class="arithmatex">\(b=\mathcal{O}(\sqrt{M})\)</span>. </p>
 <p><strong>This is the whole point of <em>communication avoiding algorithms</em> research: computing lower bounds and finding algorithm that reaches them. Again, if you find this interesting, consider looking at this <a href="https://www.youtube.com/watch?v=sY3bgirw--4">brilliant introduction</a>.</strong></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In <a href="../post1/">my first post on GPU kernel optimization</a> I go over frequent coding mistakes that leads to extra useless communications. In that post, I will not give guidelines to reach theoretical lower bounds for your case. This is just too general to be discussed in a blog-post. As we saw, it constitutes a research topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.</p>
+<h2 id="special-thanks">Special thanks</h2>
+<p>Thanks to Ivan Huard (EPITA) for providing feedback.</p>
               
             </div>
           </div><footer>

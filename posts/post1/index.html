@@ -106,7 +106,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#2-avoid-the-use-of-local-memory">2. Avoid the use of local memory</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#what-is-local-memory-how-to-detect-its-usage-at-compile-time">What is local memory, how to detect it's usage at compile-time.</a>
+    <li class="toctree-l3"><a class="reference internal" href="#what-is-local-memory-how-to-detect-its-usage">What is local memory, how to detect it's usage.</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#avoid-stack-usage">Avoid stack usage</a>
         <ul>
@@ -186,7 +186,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="wip-six-basic-performance-advices-for-porting-kernels-to-the-gpu">(WIP) Six basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 3, 2025 16:07:20 UTC"><span class="timeago" datetime="2025-09-03T16:07:20+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 3, 2025 16:07:20 UTC">2025-09-03</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 07:50:35 UTC"><span class="timeago" datetime="2025-09-04T07:50:35+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 07:50:35 UTC">2025-09-04</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -363,8 +363,8 @@ If you are not familiar with warps states, really consider looking at <a href="h
 <li>Selected: will issue an instruction on the next cycle.</li>
 </ul>
 <p>The warp states shows you the <strong>reasons</strong> why your warps have been stalled during the execution of your kernel, sorted by importance. This is precisely what you should worry about ! We see two reasons here with quite obscure names "Stall long scoreboard and Stall LG throttle". You can drag over your mouse onto the items to get an explanation, e.g. for the first one:
-<img alt="alt text" src="../image-6.png" />
-<strong>Figure 4:</strong> Metric information for Stall long scoreboard.</p>
+<img alt="alt text" src="../image-6%20%281%29.jpg" /></p>
+<p><strong>Figure 4:</strong> Metric information for Stall long scoreboard.</p>
 <p>Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !</p>
 <p>Let's now take a look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>. I recommend using the "add baseline" functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:</p>
 <ul>
@@ -506,8 +506,8 @@ Kokkos::parallel_for(&quot;RowSumLR&quot;, N, KOKKOS_LAMBDA(int i) {
 <p><strong>Note:</strong> Non-coalesced write are worst in performance that non-coalesced read, as a write needs to invalidate caches, we say that writes are "cache-through". A single non-coalesced write can invalidate a sector in L1, and L2, requiring the data to be fetched potentially all the way from DRAM for the next load.</p>
 <p><strong>Note:</strong> The default layout for multidimensional views in Kokkos is LayoutLeft on device, and LayoutRight on host. I believe this is due to historical reasons; Algorithms from the Trilinos library that is built upon Kokkos runs more efficiently this way. But again, this is application-specific.</p>
 <h2 id="2-avoid-the-use-of-local-memory">2. Avoid the use of local memory</h2>
-<h3 id="what-is-local-memory-how-to-detect-its-usage-at-compile-time">What is local memory, how to detect it's usage at compile-time.</h3>
-<p>As we saw in the introduction, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:</p>
+<h3 id="what-is-local-memory-how-to-detect-its-usage">What is local memory, how to detect it's usage.</h3>
+<p>As we saw in the introduction's refresher, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:</p>
 <ul>
 <li>when the "stack" is used,</li>
 <li>when register spilling happens.</li>
