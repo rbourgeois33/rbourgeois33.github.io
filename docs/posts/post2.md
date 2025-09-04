@@ -12,13 +12,15 @@ Looking at Figure 1, memory transfers, within DRAM, or over the network, have be
 ![ ](image.png)
 **Figure 1:** Evolution of the time per flop (gamma), inverse bandwidth (beta) and latency (alpha) between ~1980 to ~2015. [Source](https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf).
 
-The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 **Flop Per Load (FPL) factor** for more recent hardware:
+The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 **Flop Per Load (FPL) factor** for recent GPUs that make up for the overwhelming majority of thr computational capacity of the world's top supercomputers:
 
 | GPU   |   Release Year |   FP64 FLOPS (TFLOPS) |   BW (TB/s)  |   FP64 FPL |
 |:------|---------------:|----------------------:|------------:|-----------------------:|
 | [V100](https://www.techpowerup.com/gpu-specs/tesla-v100-pcie-16-gb.c2957)  |           2017 |                   7.066 |         0.897  |           ~65.19  |
 | [A100](https://www.techpowerup.com/gpu-specs/a100-pcie-40-gb.c3623)  |           2020 |                   9.746 |         1.56     |           ~49.9     |
+| [MI250x](https://www.techpowerup.com/gpu-specs/radeon-instinct-mi250x.c3837)  |           2021 |                   47.85 |         3.28     |           ~116   |
 | [H100](https://www.techpowerup.com/gpu-specs/h100-pcie-80-gb.c3899)  |           2022 |                  25.61   |         2.04 |          ~ 100       |
+| [MI300A](https://www.techpowerup.com/gpu-specs/radeon-instinct-mi300a.c4296)  |           2023 |                   81.72 |         10.3     |           ~63   |
 | [B200](https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210)  |           2024 |                  62   |         8.20      |           ~60       |   
 
 **Table 1:** Evolution of the BW, FP64 flops and FPL for recent Nvidia GPU models. FPL is computed as $\frac{FP64 \ Flops}{BW}*8$ since a FP64 number is made of 8 bytes.
@@ -35,6 +37,13 @@ I want to clarify some conventions, and push for the use of clear terminologies 
 - **An operation** is a theoretical construction for data transformation that takes an input, and produces an output, e.g. matrix multiplication, finite-element projection, a time-step of a finite volume method, a linear system resolution. It exists in the realm of ideas, may have inserting properties but does not refer to specific way to achieve to the result.
 - **An algorithm:** (for an operation) is a sequence of instructions, that may be written in pseudo-code, that describes a way how to get the result of an operation. Different algorithms may give different results for the same operation (even in exact arithmetic). Think about direct solvers vs. iterative solvers for instance.
 - **An implementation:** (of an algorithm) is a concrete, existing piece of code that, well, implements an algorithm. It may be in done in any language. Different implementations should give the same results in exact arithmetic for a given algorithm, but can give different results in finite arithmetic because of e.g. floating point precision and hardware/runtime details that affect the ordering of operations.
+  
+**Note:** When writing an algorithm, you always have to rely on building blocks. The notion of *instruction* is relative to the level of abstraction you are working with. In particular:
+
+- If you are designing a CFD solver, solving a linear system may be seen as a single instruction/kernel.
+- If you are designing a linear system solver, performing a vector dot-product, or a matrix-vector multiplication may be seen as a single instruction/kernel.
+- If you are designing a vector dot-product, loading data and performing multiplication and additions may be seens as a single instruction/kernel.
+- If you are designing a floating-point addition, register manipulation may be seens as a single instruction/kernel.
 
 ## A simple memory model
 
