@@ -183,7 +183,8 @@ If you are not familiar with warps states, really consider looking at [the 1h30 
 - Selected: will issue an instruction on the next cycle.
   
 The warp states shows you the **reasons** why your warps have been stalled during the execution of your kernel, sorted by importance. This is precisely what you should worry about ! We see two reasons here with quite obscure names "Stall long scoreboard and Stall LG throttle". You can drag over your mouse onto the items to get an explanation, e.g. for the first one:
-![alt text](image-6.png)
+![alt text](image-6 (1).jpg)
+
 **Figure 4:** Metric information for Stall long scoreboard.
 
 Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !
@@ -359,8 +360,8 @@ As you see, the best layout depends on what *operation* you plan on doing on you
 **Note:** The default layout for multidimensional views in Kokkos is LayoutLeft on device, and LayoutRight on host. I believe this is due to historical reasons; Algorithms from the Trilinos library that is built upon Kokkos runs more efficiently this way. But again, this is application-specific.
 
 ## 2. Avoid the use of local memory
-### What is local memory, how to detect it's usage at compile-time.
-As we saw in the introduction, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:
+### What is local memory, how to detect it's usage.
+As we saw in the introduction's refresher, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:
 
 - when the "stack" is used,
 - when register spilling happens.

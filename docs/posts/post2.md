@@ -14,7 +14,7 @@ Looking at Figure 1, memory transfers, within DRAM, or over the network, have be
 
 The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 **Flop Per Load (FPL) factor** for more recent hardware:
 
-| GPU   |   Release Year |   FP64 FLOPS (TFLOPS) |   BW (TB/s)  |   FPL |
+| GPU   |   Release Year |   FP64 FLOPS (TFLOPS) |   BW (TB/s)  |   FP64 FPL |
 |:------|---------------:|----------------------:|------------:|-----------------------:|
 | [V100](https://www.techpowerup.com/gpu-specs/tesla-v100-pcie-16-gb.c2957)  |           2017 |                   7.066 |         0.897  |           ~65.19  |
 | [A100](https://www.techpowerup.com/gpu-specs/a100-pcie-40-gb.c3623)  |           2020 |                   9.746 |         1.56     |           ~49.9     |
@@ -71,20 +71,20 @@ I insist on using the terminology *"properties of the **runtime (of an implement
 - Performance of an algorithm can vary dramatically between a naive and a smart implementation.
 - Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between an "old, crippled, small-cached" machine and a "brand new shiny and expensive" machine.
 
-A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of $f$ and $m$ that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can event control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me.
+A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of $f$ and $m$ that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can  control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. You have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me.
 
-Let's consider the example of a very generic operation: **dense matrix multiplication**, $C=A.B$ (the 1st homework of [CS267](https://sites.google.com/lbl.gov/cs267-spr2022) and topic of the 2nd and 3rd lectures). 
+Let's consider the example of a very generic operation: **dense matrix multiplication**, `C+=A.B` (the 1st homework of [CS267](https://sites.google.com/lbl.gov/cs267-spr2022) and topic of the 2nd and 3rd lectures). 
 
 <!--**Note** matrix-multiplication is such a constrained operation that it is difficult to differentiate the operation from the algorithm. In fact, the difference between algorithms is the way they handle cache.-->
 
-If three $n\times n$ matrices fits in fast memory, we know that that we need to load/store only $3n^2$ words (2 matrix read, 1 matrix write) from slow memory, and perform $2n^3$ operations (one dot product per element of C, each dot product being $n$ multiply and $n$ add) with a resulting $CI_{\text{ideal}}^{\text{matmul}}=\frac{3n}{2}$. The bigger $n$ is, the closer we get from ideal performance. However, as $n$ grows, it is clear that the problem does not fit in fast memory ($3n^2>M$ eventually). A naive implementation of matrix multiply is:
+If three $n\times n$ matrices fits in fast memory, we know that that we need to load/store only $4n^2$ words (3 matrix read, 1 matrix write) from slow memory, and perform $2n^3$ operations (one dot product per element of C, each dot product being $n$ multiply and $n$ add) with a resulting $CI_{\text{ideal}}^{\text{matmul}}=\frac{n}{2}$. The bigger $n$ is, the closer we get from ideal performance. However, as $n$ grows, it is clear that the problem does not fit in fast memory ($3n^2>M$ eventually). A naive implementation of matrix multiply is:
 ```python
 for i in range(n):
     #load A[i,:] from fast memory (n words)
     for j in range (n): 
         #load B[:,j] from fast memory (n words)
         #read C[i,j] from fast memory (1 word)
-        C[i,j] = dot(A[i,:], B[:,j]) #(2n operations)
+        C[i,j] += dot(A[i,:], B[:,j]) #(2n+1 operations)
         #store C[i,j] in slow memory (1 word)
 
 #Total: 
@@ -106,12 +106,12 @@ for i in range(N):
             Ablock=...
             #load the ijth block from B into fast memory (bxb words)
             Bblock=...
-            Cblock += matmul(Ablock, Bblock) #naive matmul, or micro kernel that fits in cache / registers (2b^3 operations)
+            Cblock += matmul(Ablock, Bblock) #naive matmul, or micro kernel that fits in cache / registers (2b^3 + 2b^2 operations)
         #store the ijth block from C into slow memory (bxb words)
 
 #Total: 
 # m = N^2( 2b^2 + N(2b^2) ) --> 2N^3b^2= 2n^3/b
-# f = N^3(2b^3) =2n^3
+# f = N^3(2b^3+2b^2)  --> 2N^3b^3 = 2n^3
 ```
 So, you might wonder, what should I do ? How do I know if there is a better algorithm ? Well, a theoretical upper bound on the computational intensity has been found and is given by $CI_{\text{blocked}}^{\text{matmul}}=\mathcal{O}(\sqrt{M})$, and if you ever write a new dense matmul implementation, you should strive to reach it. And notice ! the blocked algorithm reaches that bound. Indeed, since the blocks fit in fast memory, $3b^2 <M$ $\implies$ $b=\mathcal{O}(\sqrt{M})$. 
 
@@ -120,3 +120,7 @@ So, you might wonder, what should I do ? How do I know if there is a better algo
 ## Conclusion
 
 Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In [my first post on GPU kernel optimization](post1.md) I go over frequent coding mistakes that leads to extra useless communications. In that post, I will not give guidelines to reach theoretical lower bounds for your case. This is just too general to be discussed in a blog-post. As we saw, it constitutes a research topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.
+
+## Special thanks
+
+Thanks to Ivan Huard (EPITA) for providing feedback.
