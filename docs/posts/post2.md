@@ -3,12 +3,12 @@ _Last updated: {{ git_revision_date_localized }}_.
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&label=Visits)
 
 ## Disclaimer
-This post was originally supposed to be a short introduction within [my first post on GPU kernel optimization](post1.md), but then I realized that I liked to talk too much about it and went out of scope. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on YouTube, where you can find **everything** that I explain here.
+This post was originally supposed to be a short introduction within [my first post on GPU kernel optimization](post1.md), but then I realized that I liked to talk too much about it and went out of scope. This is **largely** inspired by [this brilliant talk](https://www.youtube.com/watch?v=sY3bgirw--4) by Prof. James Demmel (Berkley), as well as a the [his CS267 class](https://sites.google.com/lbl.gov/cs267-spr2022) with free lectures on YouTube, where you can find **almost everything** that I explain here.
 
 **Note** The terms *communications* and *memory transfers* will be used interchangeably. Also in the present context, a *word* refers to a single FP64 number.
 
 ## Hardware trends
-Looking at Figure 1, memory transfers, within DRAM, or over the network, have been more expensive than (FP64) math operation since ~1992:
+Looking at Figure 1, memory transfers, within DRAM, or over the network, have been more expensive than a (FP64) math operation since ~1992:
 ![ ](image.png)
 **Figure 1:** Evolution of the time per flop (gamma), inverse bandwidth (beta) and latency (alpha) between ~1980 to ~2015. [Source](https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf).
 
@@ -51,7 +51,7 @@ One result that I like a lot is the one presented in [the second CS267 lecture](
 
 We can then define $CI_{\text{runtime}}=\frac{f}{m}$, a property  **of the runtime of an implementation of the algorithm** that is called *the computational intensity*. It is the average number of flops per slow memory access. While the previously defined FPL factor, **a property of the machine**, is just given as $FPL_{\text{hardware}}=\frac{t_m}{t_f}$.
 
-**Note:** Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~an order of magnitude difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.
+**Note:** Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~3-4x difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.
 
 ## Getting good performance
 
@@ -67,7 +67,7 @@ It is now clear that to get near optimal performance, we want to reduce the rati
 
 I insist on using the terminology *"properties of the **runtime (of an implementation (of an algorithm))**".* Indeed, in practice, the numbers $f$, $m$ and $CI_{\text{runtime}}=\frac{f}{m}$ should not be obtained by simply computing the ratio of how much memory should be touched, and how many operation should be done ideally, optimally for a given operation. Because most real problems do not fit in cache. Instead, these numbers are a property of how the algorithm is implemented, compiled and ran.
 
-- Performance for an operation can vary dramatically between a naive and a smart algorithm. 
+- Operation count for an operation can vary dramatically between a naive and a smart algorithm. 
 - Performance of an algorithm can vary dramatically between a naive and a smart implementation.
 - Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between an "old, crippled, small-cached" machine and a "brand new shiny and expensive" machine.
 
@@ -95,7 +95,6 @@ It has a computational intensity of $CI_{\text{naive}}^{\text{matmul}}=\mathcal{
 
 ```python
 #pick a block size b that fits in cache (3b^2<M)
-
 N=n/b #compute block size
 
 for i in range(N):
