@@ -122,31 +122,39 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3-improve-occupancy">3. Improve occupancy</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background">Background</a>
+    <li class="toctree-l3"><a class="reference internal" href="#what-is-occupancy-why-improving-it">What is occupancy, why improving it</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_3">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_1">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#improve-occupancy">Improve occupancy</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#reduce-per-thread-register-usage">Reduce per-thread register usage</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#tune-launch-configuration">Tune launch configuration</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#reduce-shared-memory-usage">Reduce shared memory usage</a>
+    </li>
+        </ul>
     </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#4-minimize-redundant-math-operation-use-cheap-arithmetics">4. Minimize redundant math operation, use cheap arithmetics</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_1">Background</a>
+    <li class="toctree-l3"><a class="reference internal" href="#background">Background</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_4">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_2">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_1">Advices</a>
     </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#5-avoid-thread-divergence">5. Avoid thread divergence</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#background_2">Background</a>
+    <li class="toctree-l3"><a class="reference internal" href="#background_1">Background</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_5">Profiler diagnosis</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#advices_3">Advices</a>
+    <li class="toctree-l3"><a class="reference internal" href="#advices_2">Advices</a>
     </li>
         </ul>
     </li>
@@ -185,8 +193,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="wip-six-basic-performance-advices-for-porting-kernels-to-the-gpu">(WIP) Six basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 4, 2025 12:53:11 UTC"><span class="timeago" datetime="2025-09-04T12:53:11+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 4, 2025 12:53:11 UTC">2025-09-04</span></em>.<br />
+                <h1 id="wip-five-basic-performance-advices-for-porting-kernels-to-the-gpu">(WIP) five basic performance advices for porting kernels to the GPU.</h1>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 5, 2025 07:32:48 UTC"><span class="timeago" datetime="2025-09-05T07:32:48+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 5, 2025 07:32:48 UTC">2025-09-05</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -199,6 +207,7 @@
 <li>A 20-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
 <li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU)</li>
 </ul>
+<p>[todo kernel are a single loop here]</p>
 <p>By <em>reasonable</em> I do not mean that you will get <em>optimal</em> performance. In fact, I will not go over what I consider to be <em>advanced</em> optimization advices such as the use of </p>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s"><code>shared memory</code></a>, </li>
@@ -218,7 +227,7 @@ The advices are general enough so that they should allow speedups on all cards f
 <h3 id="disclaimers">Disclaimers</h3>
 <p>If you think I wrote something that is wrong, or misleading please let me know !</p>
 <p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.nvidia.com/nsight-systems">nsight systems</a> (nsys) and <a href="https://developer.nvidia.com/nsight-compute">nsight compute</a> (ncu). However, note that AMD provides similar profilers (altough, at the time I am writing this, rocm's kernel profilers seem a lot less user friendly), and that the advices that I give here are general enough so that they apply for GPUs from both vendors.</p>
-<p>I am heavily biased towards memory-related optimization as the TRUS ccod</p>
+<p>I am heavily biased towards memory-related optimization as the CFD code that I am working on is heavily memory bound.</p>
 <p>Moreover, I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
 <h3 id="prerequisites">prerequisites</h3>
 <p>In this tutorial, I will assume that you are already familiar with:</p>
@@ -233,10 +242,12 @@ The advices are general enough so that they should allow speedups on all cards f
 <li>Basic GPU architecture, in particular:<ul>
 <li>Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.</li>
 <li>What are CUDA threads / blocks, global memory. <em>You can be confused about what is local memory</em>.</li>
+<li>Some knowledge of occupancy, altough not mandatory</li>
 <li>Some resources on GPU architecture / CUDA programming:<ul>
 <li>The refresher below,</li>
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou (Nvidia)</a>,</li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella (Nvidia)</a>.</li>
+<li><a href="https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.html">Achieved occupancy</a></li>
 </ul>
 </li>
 </ul>
@@ -263,31 +274,32 @@ The advices are general enough so that they should allow speedups on all cards f
 </li>
 </ul>
 <h3 id="outline">Outline</h3>
-<p>The outline for this post is the following six rules of thumbs,or advices, largely inspired by <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
+<p>The outline for this post is the following five rules of thumbs,or advices, largely inspired by <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
 <ol>
 <li>Minimize redundant global memory accesses.</li>
 <li>Avoid the use of <em>Local memory</em>.</li>
+<li>Improve occupancy.</li>
 <li>Minimize redundant math operation, use cheap arithmetic.</li>
 <li>Avoid thread divergence.</li>
 </ol>
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in ncu. Look for "Profiler diagnosis" sections.</p>
 <h3 id="before-we-start">Before we start</h3>
-<p>Before going into the six advices, I invite you to read <a href="../post2/">my post on the cost of communications</a> that is a good, unnecessary long introduction for advices 1. and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=sY3bgirw--4">this brilliant talk on communication-avoiding algorithms</a>. </p>
+<p>Before going into the five advices, I invite you to read <a href="../post2/">my post on the cost of communications</a> that is a good, unnecessary long introduction for advices 1. and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
 <p>All sample code and ncu reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were ran on my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
 <p>Lastly, here is a refresher on the separation of hardware and software concepts when programming Nvidia GPUs with CUDA:
 <img alt="alt text" src="../image-14.png" />
 <strong>Figure 8:</strong> Software / hardware memory hierarchy of an Nvidia GPU. <a href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/">source</a>. </p>
 <p>The GPU hardware is organized as follows:</p>
 <ul>
-<li>A GPU is made of an aggregation of Streaming Multiprocessors (SM) that contains the computational units. This is where the computations are done. Instructions are scheduled as so-called warps of size 32.</li>
+<li>A GPU is made of an aggregation of Streaming Multiprocessors (SM) that contains the computational units. This is where the computations are done. Instructions are scheduled as so-called warps, i.e. intruction packs of size 32.</li>
 <li>The DRAM (slowest memory access, limited by the bandwidth), accessible by all Streaming Multiprocessors (SM),</li>
-<li>the L2 cache, much smaller than the DRAM but faster, accessible visible by all SMs,</li>
-<li>One L1 cache by SM, much smaller than the L2 but faster,</li>
-<li>A register file per SM, much smaller than the L1 but the fastest.</li>
+<li>the L2 cache, much smaller than the DRAM but faster, accessible by all SMs,</li>
+<li>One L1 cache by SM, much smaller than the L2 but faster, accessible by only his host SM,</li>
+<li>A register file per SM, much smaller than the L1 but the fastest, accessible by only his host SM.</li>
 </ul>
 <p>The software is organized as follows:</p>
 <ul>
-<li>Threads are uniquely defined sequences of operations defined by the CUDA kernels. They reside on the SM's.</li>
+<li>Threads are uniquely defined sequences of operations defined by the CUDA kernels. They are dispatched on the GPU's SM.</li>
 <li>Blocks of threads. Threads of a block only reside in the same SM.</li>
 <li>Global memory. Visible by all threads, may reside in DRAM, L2 or L1 (potentially very slow !)</li>
 <li>Shared memory. Visible by all threads of a block, managed by the developer. Resides in L1.</li>
@@ -522,9 +534,10 @@ ptxas info    : Used 28 registers, used 0 barriers, 24 bytes cumulative stack si
 ptxas info    : Compile time = 5.300 ms
 </code></pre>
 <p>if <code>bytes stack frame</code> is greater than 0, you are using the stack. If either <code>bytes spill stores</code> or <code>bytes spill loads</code>are greater than 0, register spilling is happening.</p>
+<p><strong>Note:</strong> As far as I know there is not such a flag for AMD GPUs. You can however dump the <code>asm</code> and look for your kernel and the corresponding informations. This is possible, just less straighforward.</p>
 <h3 id="avoid-stack-usage">Avoid stack usage</h3>
 <h4 id="precautions-when-using-static-arrays-for-temporary-storage">Precautions when using static arrays for temporary storage</h4>
-<p>In my experience, stack usage typically arises when using static arrays for temporary storage to reduce redundant thread-level global memory accesses. This is especially the case when the array is indexed at runtime in a way that the compiler cannot resolve at compile time. Because the compiler cannot predict the access pattern, it places the array in local memory, which provides the necessary flexibility for dynamic indexing despite terrible performances. Let's look at a mock example:</p>
+<p>In my experience, stack usage typically arises when using static arrays for temporary storage to reduce redundant thread-level global memory accesses. In particular, this happens when the array is accessed with a runtime variable, that the compiler cannot resolve at compile time. Because the compiler cannot predict the access pattern, it places the array in local memory, which provides the necessary flexibility for dynamic indexing despite terrible performances. Let's look at a mock example:</p>
 <pre><code class="language-c++">// Within a GPU kernel, thread id is i
 double tmp[3]
 tmp[2] = ... //OK ! resolvable at compile time
@@ -543,7 +556,7 @@ tmp[index] = .. //Not OK ! Compiler cannot resolve this. It cannot compute the v
         //Error 
 }
 </code></pre>
-<p>This can also happens when static arrays are used in loops that cannot be unrolled:</p>
+<p>This can also happens when static arrays are used in loops that cannot be unrolled, see <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-5.cpp">sample-5.cpp</a>:</p>
 <pre><code class="language-c++">    int bound=3;
     Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) { 
         float tmp[3];  
@@ -554,9 +567,9 @@ tmp[index] = .. //Not OK ! Compiler cannot resolve this. It cannot compute the v
        // some stuff
     });
 </code></pre>
-<p>in this piece of code, <code>bound</code> is a non-const, runtime variable that nvcc cannot deduce when compiling the kernel. Therefore, <code>tmp</code> is not statically addressed and has to reside in local memory. Try compiling <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp">sample-5.cpp</a> as it is, and after adding a <code>const</code> clause in <code>bound</code>'s declaration, and observe the difference in the output pf <code>Xptas</code>.</p>
+<p>in this piece of code, <code>bound</code> is a non-const, runtime variable that nvcc cannot deduce when compiling the kernel. Therefore, <code>tmp</code> is not statically addressed and has to reside in local memory. Try compiling  as it is, and after adding a <code>const</code> clause in <code>bound</code>'s declaration, and observe the difference in the output pf <code>Xptas</code>.</p>
 <h4 id="profiler-diagnosis_2">Profiler diagnosis</h4>
-<p>Let's look at a <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp">sample-4.cpp</a> that resembles sample-2, but with and indirection table that is filled</p>
+<p>Let's look at a <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp">sample-4.cpp</a> that resembles sample-2, but with an indirection table that is filled</p>
 <pre><code class="language-c++">Kokkos::View&lt;int**&gt; indirections(&quot;indirections&quot;, size, dim);
 Kokkos::parallel_for(&quot;fill indirections&quot;, size, KOKKOS_LAMBDA(const int i) { 
     for (int dir = 0; dir &lt; dim; dir++){
@@ -564,7 +577,7 @@ Kokkos::parallel_for(&quot;fill indirections&quot;, size, KOKKOS_LAMBDA(const in
     }
 });
 </code></pre>
-<p>such that it contains values in <span class="arithmatex">\([0, \text{dim}]\)</span>. Then, the table is used in the kernel:</p>
+<p>such that it contains values in <span class="arithmatex">\([0, \text{dim}[\)</span>. Then, the table is used in the kernel:</p>
 <pre><code class="language-c++">template&lt;int dim&gt;
 void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B, Kokkos::View&lt;int**&gt; indirections, int size){
 Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) { 
@@ -573,14 +586,15 @@ Kokkos::parallel_for(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i) {
         int indir[dim];
 
         for (int dir = 0; dir &lt; dim; dir++){
-            indir[dir] = indirections(i, dir);
+            indir[dir] = indirections(i, dir); //Here we store the indirections
            // ... same as sample-2
         }
         for (int k = 0; k &lt; 10; k++){
             for (int dir = 0; dir &lt; dim; dir++){
                 for (int dir2 = 0; dir2 &lt; dim; dir2++){
                     Atmp[indir[dir]] += Btmp[dir2]; //Not OK ! Compiler cannot resolve this. 
-                    // It cannot compute the value of index. tmp now resides in local memory
+                    // It cannot predict the value of indir[dir]. 
+                    // tmp now resides in local memory
                 }
             }
         } 
@@ -616,33 +630,50 @@ ptxas info    : Used 24 registers, used 0 barriers, 512 bytes cmem[0]
 <p>Now, comparing the ncu reports <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep">sample-4.ncu-rep</a>, <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4-fixed.ncu-rep">sample-4-fixed.ncu-rep</a> we can see that:</p>
 <ul>
 <li>The fixed version is 32% faster (6.98ms vs 10.37 ms).</li>
-<li>both compute and memory pipelines are used much more effectively in the fixed version (see SOL)</li>
-<li>the warps are much less stalled for "stall long scoreboard" i.e. waiting on local memory dependency for the fixed version</li>
-<li>The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, while we see for the base version:
-<img alt="alt text" src="../image-15.png" />
-<strong>Figure 8:</strong> Local memory usage in ncu for <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep">sample-4.ncu-rep</a>.</li>
+<li>Both compute and memory pipelines are used much more effectively in the fixed version (see SOL section).</li>
+<li>The warps are much less stalled for "stall long scoreboard" i.e. in this case waiting on local memory dependency for the fixed version.</li>
+<li>The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100% !
+<img alt="alt text" src="../image-17.png" /></li>
+</ul>
+<p><strong>Figure 8</strong> Memory workload analysis for sample-4-fixed.ncu-rep, with sample-4.ncu-rep as a baseline. Zoom on Kernel &lt;-&gt; L1 interactions.</p>
+<ul>
+<li>We also see that the L1 cache is much less used (-92%) in the fixed version, because local memory resides in the L1 cache.</li>
 <li>Lastly, the source view allows to track the line(s) responsible for local memory usage:
 <img alt="alt text" src="../image-16.png" /><br />
 <strong>Figure 9:</strong> Local memory usage localization in ncu's source view for <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep">sample-4.ncu-rep</a>.</li>
 </ul>
+<p>As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in ncu. This is also the case for register spilling, as detailed in the next section.</p>
 <h3 id="avoid-register-spilling">Avoid register spilling</h3>
-<p>Register spilling happens when threads are requiring too much register, so much so that it hinders occupancy in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing register usage will help avoiding register spilling. As a result, we refer to the next section.</p>
+<p>Register spilling happens when threads are requiring too much registers, so much so that it hinders <em>occupancy</em> in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the next section as the advices will coincides</p>
 <h2 id="3-improve-occupancy">3. Improve occupancy</h2>
-<p>Hide latency The occupancy trap, ILP, hide latency reduce Register usage
-Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches
-Why does it spills . Parfois il faut</p>
-<h3 id="background">Background</h3>
+<h3 id="what-is-occupancy-why-improving-it">What is occupancy, why improving it</h3>
+<p>As we saw in the introduction's refresher, threads reside on the GPU's SM as warps of 32. Each SM can host a maximum given number of warps, e.g. 48 for my RTX 6000 Ada. If  a kernel is able to have 48 active warps per SM, we say that it runs at <em>maximum occupancy</em>.</p>
+<p>However, several factor may hinder occupancy, indeed, each SM has a limited amount of:</p>
+<ul>
+<li>registers</li>
+<li>number of blocks it can host</li>
+<li>shared memory</li>
+<li>threads it can host</li>
+</ul>
 <h3 id="profiler-diagnosis_3">Profiler diagnosis</h3>
-<h3 id="advices_1">Advices</h3>
+<p>ncu latency bound, occupancy section
+ The occupancy trap:ILP</p>
+<h3 id="improve-occupancy">Improve occupancy</h3>
+<h4 id="reduce-per-thread-register-usage">Reduce per-thread register usage</h4>
+<p>no MDRANGE, template away expensive branches, reogranize math ? limited</p>
+<h4 id="tune-launch-configuration">Tune launch configuration</h4>
+<p>launch bound</p>
+<h4 id="reduce-shared-memory-usage">Reduce shared memory usage</h4>
+<p>we dont talk about block and share memory limits, </p>
 <h2 id="4-minimize-redundant-math-operation-use-cheap-arithmetics">4. Minimize redundant math operation, use cheap arithmetics</h2>
-<h3 id="background_1">Background</h3>
+<h3 id="background">Background</h3>
 <h3 id="profiler-diagnosis_4">Profiler diagnosis</h3>
-<h3 id="advices_2">Advices</h3>
+<h3 id="advices_1">Advices</h3>
 <p>FMA, / vs *, unroll loop for int computation might need to template Math can be a bottleneck  Do smarter math</p>
 <h2 id="5-avoid-thread-divergence">5. Avoid thread divergence</h2>
-<h3 id="background_2">Background</h3>
+<h3 id="background_1">Background</h3>
 <h3 id="profiler-diagnosis_5">Profiler diagnosis</h3>
-<h3 id="advices_3">Advices</h3>
+<h3 id="advices_2">Advices</h3>
 <p>The SIMD pattern, masking templating</p>
 <h2 id="final-advices">Final advices</h2>
 <p>Participate to hackathons !</p>
