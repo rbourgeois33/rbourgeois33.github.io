@@ -1,4 +1,4 @@
-# (WIP) Six basic performance advices for porting kernels to the GPU.
+# (WIP) five basic performance advices for porting kernels to the GPU.
 _Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
 
@@ -16,6 +16,8 @@ By applying them, I was able to get the following speedups that are measured rel
 - A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstruous kernel.
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU)
+
+[todo kernel are a single loop here]
   
 By *reasonable* I do not mean that you will get *optimal* performance. In fact, I will not go over what I consider to be *advanced* optimization advices such as the use of 
 
@@ -40,7 +42,7 @@ If you think I wrote something that is wrong, or misleading please let me know !
 
 I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.nvidia.com/nsight-systems) (nsys) and [nsight compute](https://developer.nvidia.com/nsight-compute) (ncu). However, note that AMD provides similar profilers (altough, at the time I am writing this, rocm's kernel profilers seem a lot less user friendly), and that the advices that I give here are general enough so that they apply for GPUs from both vendors.
 
-I am heavily biased towards memory-related optimization as the TRUS ccod
+I am heavily biased towards memory-related optimization as the CFD code that I am working on is heavily memory bound.
 
 Moreover, I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **cool**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
@@ -56,10 +58,12 @@ In this tutorial, I will assume that you are already familiar with:
 - Basic GPU architecture, in particular:
     - Some knowledge about the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses.
     - What are CUDA threads / blocks, global memory. *You can be confused about what is local memory*.
+    - Some knowledge of occupancy, altough not mandatory
     - Some resources on GPU architecture / CUDA programming:
         - The refresher below,
         - [1h30 lecture by Athena Elfarou (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/),
         - [13 lectures by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj).
+        - [Achieved occupancy](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.html)
 
 Although not necessary for getting through this post, I recommend you learn about:
 
@@ -76,18 +80,19 @@ Although not necessary for getting through this post, I recommend you learn abou
     -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see [the CExA project](https://cexa-project.org/)).
 ### Outline
 
-The outline for this post is the following six rules of thumbs,or advices, largely inspired by [the Nvidia Ampere tuning guide](https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html):
+The outline for this post is the following five rules of thumbs,or advices, largely inspired by [the Nvidia Ampere tuning guide](https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html):
 
 1. Minimize redundant global memory accesses.
 2. Avoid the use of *Local memory*.
-3. Minimize redundant math operation, use cheap arithmetic.
-4. Avoid thread divergence.
+3. Improve occupancy.
+4. Minimize redundant math operation, use cheap arithmetic.
+5. Avoid thread divergence.
 
 Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in ncu. Look for "Profiler diagnosis" sections.
 
 ### Before we start
 
-Before going into the six advices, I invite you to read [my post on the cost of communications](post2.md) that is a good, unnecessary long introduction for advices 1. and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=sY3bgirw--4). 
+Before going into the five advices, I invite you to read [my post on the cost of communications](post2.md) that is a good, unnecessary long introduction for advices 1. and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). 
 
 All sample code and ncu reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample) along with compilation and execution instructions. The reports were ran on my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
 
@@ -97,15 +102,15 @@ Lastly, here is a refresher on the separation of hardware and software concepts 
 
 The GPU hardware is organized as follows:
 
-- A GPU is made of an aggregation of Streaming Multiprocessors (SM) that contains the computational units. This is where the computations are done. Instructions are scheduled as so-called warps of size 32.
+- A GPU is made of an aggregation of Streaming Multiprocessors (SM) that contains the computational units. This is where the computations are done. Instructions are scheduled as so-called warps, i.e. intruction packs of size 32.
 - The DRAM (slowest memory access, limited by the bandwidth), accessible by all Streaming Multiprocessors (SM),
-- the L2 cache, much smaller than the DRAM but faster, accessible visible by all SMs,
-- One L1 cache by SM, much smaller than the L2 but faster,
-- A register file per SM, much smaller than the L1 but the fastest.
+- the L2 cache, much smaller than the DRAM but faster, accessible by all SMs,
+- One L1 cache by SM, much smaller than the L2 but faster, accessible by only his host SM,
+- A register file per SM, much smaller than the L1 but the fastest, accessible by only his host SM.
 
 The software is organized as follows:
 
-- Threads are uniquely defined sequences of operations defined by the CUDA kernels. They reside on the SM's.
+- Threads are uniquely defined sequences of operations defined by the CUDA kernels. They are dispatched on the GPU's SM.
 - Blocks of threads. Threads of a block only reside in the same SM.
 - Global memory. Visible by all threads, may reside in DRAM, L2 or L1 (potentially very slow !)
 - Shared memory. Visible by all threads of a block, managed by the developer. Resides in L1.
@@ -380,9 +385,11 @@ ptxas info    : Compile time = 5.300 ms
 
 if `bytes stack frame` is greater than 0, you are using the stack. If either `bytes spill stores` or `bytes spill loads`are greater than 0, register spilling is happening.
 
+**Note:** As far as I know there is not such a flag for AMD GPUs. You can however dump the `asm` and look for your kernel and the corresponding informations. This is possible, just less straighforward.
+
 ### Avoid stack usage
 #### Precautions when using static arrays for temporary storage
-In my experience, stack usage typically arises when using static arrays for temporary storage to reduce redundant thread-level global memory accesses. This is especially the case when the array is indexed at runtime in a way that the compiler cannot resolve at compile time. Because the compiler cannot predict the access pattern, it places the array in local memory, which provides the necessary flexibility for dynamic indexing despite terrible performances. Let's look at a mock example:
+In my experience, stack usage typically arises when using static arrays for temporary storage to reduce redundant thread-level global memory accesses. In particular, this happens when the array is accessed with a runtime variable, that the compiler cannot resolve at compile time. Because the compiler cannot predict the access pattern, it places the array in local memory, which provides the necessary flexibility for dynamic indexing despite terrible performances. Let's look at a mock example:
 
 ```c++
 // Within a GPU kernel, thread id is i
@@ -404,7 +411,7 @@ switch(index){
         //Error 
 }
 ```
-This can also happens when static arrays are used in loops that cannot be unrolled:
+This can also happens when static arrays are used in loops that cannot be unrolled, see [sample-5.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-5.cpp):
 ```c++
     int bound=3;
     Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) { 
@@ -416,10 +423,10 @@ This can also happens when static arrays are used in loops that cannot be unroll
        // some stuff
     });
 ```
-in this piece of code, `bound` is a non-const, runtime variable that nvcc cannot deduce when compiling the kernel. Therefore, `tmp` is not statically addressed and has to reside in local memory. Try compiling [sample-5.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp) as it is, and after adding a `const` clause in `bound`'s declaration, and observe the difference in the output pf `Xptas`.
+in this piece of code, `bound` is a non-const, runtime variable that nvcc cannot deduce when compiling the kernel. Therefore, `tmp` is not statically addressed and has to reside in local memory. Try compiling  as it is, and after adding a `const` clause in `bound`'s declaration, and observe the difference in the output pf `Xptas`.
 
 #### Profiler diagnosis
-Let's look at a [sample-4.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp) that resembles sample-2, but with and indirection table that is filled
+Let's look at a [sample-4.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.cpp) that resembles sample-2, but with an indirection table that is filled
 
 ```c++
 Kokkos::View<int**> indirections("indirections", size, dim);
@@ -429,7 +436,7 @@ Kokkos::parallel_for("fill indirections", size, KOKKOS_LAMBDA(const int i) {
     }
 });
 ```
-such that it contains values in $[0, \text{dim}]$. Then, the table is used in the kernel:
+such that it contains values in $[0, \text{dim}[$. Then, the table is used in the kernel:
 ```c++
 template<int dim>
 void apply_kernel(Kokkos::View<float**> A,  Kokkos::View<float**> B, Kokkos::View<int**> indirections, int size){
@@ -439,14 +446,15 @@ Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) {
         int indir[dim];
 
         for (int dir = 0; dir < dim; dir++){
-            indir[dir] = indirections(i, dir);
+            indir[dir] = indirections(i, dir); //Here we store the indirections
            // ... same as sample-2
         }
         for (int k = 0; k < 10; k++){
             for (int dir = 0; dir < dim; dir++){
                 for (int dir2 = 0; dir2 < dim; dir2++){
                     Atmp[indir[dir]] += Btmp[dir2]; //Not OK ! Compiler cannot resolve this. 
-                    // It cannot compute the value of index. tmp now resides in local memory
+                    // It cannot predict the value of indir[dir]. 
+                    // tmp now resides in local memory
                 }
             }
         } 
@@ -485,26 +493,47 @@ ptxas info    : Used 24 registers, used 0 barriers, 512 bytes cmem[0]
 Now, comparing the ncu reports [sample-4.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep), [sample-4-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4-fixed.ncu-rep) we can see that:
 
 - The fixed version is 32% faster (6.98ms vs 10.37 ms).
-- both compute and memory pipelines are used much more effectively in the fixed version (see SOL)
-- the warps are much less stalled for "stall long scoreboard" i.e. waiting on local memory dependency for the fixed version
-- The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, while we see for the base version:
-![alt text](image-15.png)
-**Figure 8:** Local memory usage in ncu for [sample-4.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep).
- - Lastly, the source view allows to track the line(s) responsible for local memory usage:
+- Both compute and memory pipelines are used much more effectively in the fixed version (see SOL section).
+- The warps are much less stalled for "stall long scoreboard" i.e. in this case waiting on local memory dependency for the fixed version.
+- The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100% !
+![alt text](image-17.png)
+
+**Figure 8** Memory workload analysis for sample-4-fixed.ncu-rep, with sample-4.ncu-rep as a baseline. Zoom on Kernel <-> L1 interactions.
+
+- We also see that the L1 cache is much less used (-92%) in the fixed version, because local memory resides in the L1 cache.
+- Lastly, the source view allows to track the line(s) responsible for local memory usage:
 ![alt text](image-16.png)  
 **Figure 9:** Local memory usage localization in ncu's source view for [sample-4.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-4.ncu-rep).
 
-### Avoid register spilling
-Register spilling happens when threads are requiring too much register, so much so that it hinders occupancy in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing register usage will help avoiding register spilling. As a result, we refer to the next section.
+As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in ncu. This is also the case for register spilling, as detailed in the next section.
 
+### Avoid register spilling
+Register spilling happens when threads are requiring too much registers, so much so that it hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the next section as the advices will coincides
 
 ## 3. Improve occupancy
-Hide latency The occupancy trap, ILP, hide latency reduce Register usage
-Reduce usage, launch bound, no MDRANGE, we dont talk about block and share memory limits, template away expensive branches
-Why does it spills . Parfois il faut
-### Background
+
+### What is occupancy, why improving it
+As we saw in the introduction's refresher, threads reside on the GPU's SM as warps of 32. Each SM can host a maximum given number of warps, e.g. 48 for my RTX 6000 Ada. If  a kernel is able to have 48 active warps per SM, we say that it runs at *maximum occupancy*.
+
+However, several factor may hinder occupancy, indeed, each SM has a limited amount of:
+
+- registers
+- number of blocks it can host
+- shared memory
+- threads it can host
+
 ### Profiler diagnosis
-### Advices
+ncu latency bound, occupancy section
+ The occupancy trap:ILP
+### Improve occupancy
+#### Reduce per-thread register usage
+no MDRANGE, template away expensive branches, reogranize math ? limited
+#### Tune launch configuration
+launch bound
+#### Reduce shared memory usage
+we dont talk about block and share memory limits, 
+  
+
 
 ## 4. Minimize redundant math operation, use cheap arithmetics
 ### Background
