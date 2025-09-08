@@ -46,7 +46,7 @@ I am heavily biased towards memory-related optimization as the CFD code that I a
 
 Moreover, I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **cool**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
-### prerequisites
+### Prerequisites
 
 In this tutorial, I will assume that you are already familiar with:
 
@@ -508,31 +508,207 @@ Now, comparing the ncu reports [sample-4.ncu-rep](https://github.com/rbourgeois3
 As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in ncu. This is also the case for register spilling, as detailed in the next section.
 
 ### Avoid register spilling
-Register spilling happens when threads are requiring too much registers, so much so that it hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the next section as the advices will coincides
+Register spilling happens when threads are requiring too much registers, so much so that it hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the next section as the advices will coincides. You can also play with [launch_bounds](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
+
 
 ## 3. Improve occupancy
 
-### What is occupancy, why improving it
-As we saw in the introduction's refresher, threads reside on the GPU's SM as warps of 32. Each SM can host a maximum given number of warps, e.g. 48 for my RTX 6000 Ada. If  a kernel is able to have 48 active warps per SM, we say that it runs at *maximum occupancy*.
+### What is occupancy, why improving it, when not to
 
-However, several factor may hinder occupancy, indeed, each SM has a limited amount of:
+#### What is occupancy
+Let's start by a short refresher on occupancy. But for the n-th time, consider looking at [the 1h30 lecture by Athena Elfarou (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc24-s62191/) for a much clearer introduction. As we saw in the introduction's refresher, threads reside on the GPU's SM as warps of 32. Each SM can host a maximum given number of active warps, e.g. 48 for my RTX 6000 Ada GPU (depends on the so-called compute capability of the GPU, e.g. the SM's version). The occupancy of a kernel is the average measured ratio of active warps per SM to the maximum hardware value. Each SM only has a limited amount of:
 
-- registers
-- number of blocks it can host
-- shared memory
-- threads it can host
+- registers that it can share among threads,
+- shared memory (hardware L1 cache) that it can share among threads,
+- threads and blocks it can host.
+
+As a result, in order to improve occupancy, you may consider:
+
+- reducing per-thread register usage,
+- tuning you launch configuration,
+- reduce shared memory usage.
+  
+I will only cover the first item, as my experience with [launch_bounds](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) is limited, and I decided not to talk too much about shared memory in this blog. 
+
+#### Why improving occupancy: latency hiding
+
+The reason why occupancy is important is "latency hiding". As explained in [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3), having multiple active warps allows to not waste clock cycles:
+![alt text](image-18.png)
+
+**Figure 9** Latency hiding, source: [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3)
+
+In this picture, we zoom into an SM for the execution of three instructions:
+
+- `I0`: Loading 'a[idx]' into register `R0`.
+- `I1`: Loading 'b[idx]' into register `R1`.
+- `I2`: Computing 'R0*R1' and storing the result into `R2`.
+
+Note that the same logic is going on on all other SM's, and that registers `R0/1/2` correspond to different addresses on the SM's register file for each thread.
+
+It is clear that `I0` and `I1` are independent i.e. `I1` can be scheduled without having to wait for `I0` to be finished. This enables what is called *Instruction Level Parallelism (ILP)*. Indeed, on clock cycle `C0`, `W0` issues `I0`. Then, while `I0` has started, on clock cycle `C1`, `W0` issues `I1`. Already some latency hiding is happening at the warp level; during `C1` while `I1` was issued, `I0` has made one clock cycle worth of progress. 
+
+Then, `W0` cannot issue `I2` since this instructions depends on the result of the two previous instructions. They take 18 clock cycles to finish, and at clock cycle `C18`, `I2`is issued. This is quite a lot of latency. But at clock cycle `C2`, the *warp scheduler* moved onto the next warp `W1` to issue it's own `I0` and `I1`. Effectively, `W0`'s latency is hidden by the other warps, and this continues down to warp 8 so that no clock cycles are lost and correspond to an issued instruction. Therefore, the more active warps you can fit in your SM, the more latency you can hide.
+
+#### When to stop: just make sure your hardware is used
+
+In general, more occupancy is better and you should try o maximize it. But do not fall in the *occupancy trap*. Sometime, kernels run better at low occupancy; applying advice 1 i.e. using register storage to avoid thread-level redundant memory accesses will impact negatively occupancy but often improve performance. Same story for shared memory. Lastly, having a high ILP implies using more registers. But this might not be an issue as latency is hidden anyway. Imagine figure 9 with:
+
+
+- `I0` an isntruction that takes 18 cycles to complete followed by
+- 'I1-I17`, 17 instructions that take each one cycle to complete, and
+- The last instruction Ì18` requiring the result of all of them.
+  
+The the SM would issue an instruction per clock cycle, not one would be wasted, and only one warp would suffice. That means you can get good hardware usage even at low occupancy. More so than occupancy, this should be your metric: **Tune occupancy to maximize your hardware's usage**. The best occupancy is the one that leads to the biggest global memory throughput / best achieved Flops. So, open that profiler, and refer to the ncu SOL section, and experiment !
 
 ### Profiler diagnosis
-ncu latency bound, occupancy section
- The occupancy trap:ILP
-### Improve occupancy
-#### Reduce per-thread register usage
-no MDRANGE, template away expensive branches, reogranize math ? limited
-#### Tune launch configuration
-launch bound
-#### Reduce shared memory usage
-we dont talk about block and share memory limits, 
-  
+Let's look at  [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-7.ncu-rep) that shows an horrendous occupancy (we will understand why and how to fix it later). The issue is striking in the SOL section:
+![alt text](image-19.png)
+
+**Figure 10** SOL section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-7.ncu-rep).
+
+Even though the there are a lot of threads, the hardware is barely used, and it is even hinted that there is an issue with latency. The warp state statistics says that we are mostly waiting on long scoreboard dependency. The occupancy section is clear:
+![alt text](image-21.png)
+
+**Figure 11** Occupancy section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-7.ncu-rep).
+
+The achieved occupancy is only of 12% ! This is extrimely low, and ncu predicts that we could get a 66% speedup by improving it (See that this prediction is accurate in section "Template away heavy branches"). It also indicates that the limiting factor is the register usage. Indeed, let's look at the occupancy graphs:
+
+![alt text](image-22.png)
+**Figure 12** Occupancy graphs of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-7.ncu-rep).
+
+These graph provide a very accurate prediction of how would vary the occupancy of your kernel, if you manage to change the register count per threads, the block size and the shared memory usage. Note that these graphs are not the result of the kernel being instrumented, but solely from an occupancy calculation that can be done at compile time.
+We can see that we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move to the left with the register usage, we can expect significant progress.  Now, let's see how to fix this type of issue.
+
+### How to reduce per-thread register usage
+#### Re-order operations ?
+In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering and improve the original register usage of my kernel. Instead, to get real gains the only options is to really change the operations you are doing.
+
+#### [Kokkos specific] Don't use `Kokkos::MDRangePolicy`
+I really love `Kokkos`, so I hate to write this but, as of now (september 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
+
+- excessive register usage, probably due to the internal tiling algorithm,
+- very questionable block size choice.
+
+If these get eventually solved, or if an alternative is proposed, I will happily change this part of my blog. Let's look at [sample-6.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6.cpp) that applies a blurring kernel to a 2D view:
+
+```c++
+// ...
+Kokkos::View<float**> A("A", size, size);
+Kokkos::View<float**> B("B", size, size);
+// ...
+auto policy =  Kokkos::MDRangePolicy<Kokkos::Rank<2>> ({1,1}, {size-1, size-1});
+Kokkos::parallel_for("blurr", policy, KOKKOS_LAMBDA(const int i, const int j) { 
+      
+      float tmp=0;
+      
+      tmp += B(i-1,j);
+      tmp += B(i,j);
+      tmp += B(i+1,j);
+      tmp += B(i  ,j+1);
+      tmp += B(i  ,j-1);
+
+      A(i,j)=tmp*fifth;
+});
+```
+When compiling it, we see `ptxas info    : Used 30 registers, used 0 barriers, 544 bytes cmem[0]`. For [sample-6-fixed.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6-fixed.cpp) where I linearized the 2D index:
+
+```c++
+Kokkos::parallel_for("blurr", (size-2)*(size-2), KOKKOS_LAMBDA(const int ilin) { 
+      
+      const int i = 1 + (ilin % (size-2));
+      const int j = 1 + (ilin / (size-2));
+
+      float tmp=0;
+      
+      tmp += B(i-1,j);
+      tmp += B(i,j);
+      tmp += B(i+1,j);
+      tmp += B(i  ,j+1);
+      tmp += B(i  ,j-1);
+
+      A(i,j)=tmp*fifth;
+
+});
+```
+we see `ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]`. This means that the `MDRangePolicy` uses 8 extra registers. Moreover, when looking at [sample-6.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6.ncu-rep), we see that the base version lasts 36ms vs 9.86ms for [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6-fixed.ncu-rep). This gain is not due to the 8 saved registers (that would be too much). Instead, let's look at the occupancy graph of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6-fixed.ncu-rep):
+
+![alt text](image-23.png)
+
+**Figure 13** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-6-fixed.ncu-rep)
+
+The block size picked by the `Kokkos::MDRangePolicy` is 32, which is very a very bad choice and leads to an occupancy of 50%. This explain the performance gain version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size !
+
+#### Template away heavy branches
+Now, let's look at [sample-7.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/code-sample/code-sample/sample-7.cpp) where we added a runtime variable determining if we want to perform an heavy operation in the kernel:
+
+```c++
+bool expensive_option = false;
+```
+
+and the kernel:
+```c++
+Kokkos::parallel_for("blurr", (size-2)*(size-2), KOKKOS_LAMBDA(const int ilin) { 
+      
+      const int i = 1 + (ilin % (size-2));
+      const int j = 1 + (ilin / (size-2));
+
+      float tmp = 0.0f;
+
+      tmp += B(i-1,j);
+      tmp += B(i,j);
+      tmp += B(i+1,j);
+      tmp += B(i  ,j+1);
+      tmp += B(i  ,j-1);
+      tmp *= fifth;
+
+      if (expensive_option) {
+        expensive_function(B, tmp, i, j);
+      }
+
+      A(i,j) = tmp;
+});
+```
+
+I do not want to detail `expensive_function` here, but it is an AI-generated inline function that allocates and use a 128 elements array of floats, costing a huge amount of registers. In fact, when compiling the code, we get `ptxas info    : Used 198 registers, used 0 barriers, 480 bytes cmem[0]`, for an option that is not even used. Just like for sizing the temporary storage of section 1, the solution is to use templates, and the `if constexpr` clause:
+
+```c++
+template <bool expensive_option>
+void blurredKernel(Kokkos::View<float**> A, Kokkos::View<float**> B, const int size){
+      
+      Kokkos::parallel_for("blurr", (size-2)*(size-2), KOKKOS_LAMBDA(const int ilin) { 
+      
+        const int i = 1 + (ilin % (size-2));
+        const int j = 1 + (ilin / (size-2));
+
+        float tmp = 0.0f;
+
+        tmp += B(i-1,j);
+        tmp += B(i,j);
+        tmp += B(i+1,j);
+        tmp += B(i  ,j+1);
+        tmp += B(i  ,j-1);
+        tmp *= fifth;
+
+        if constexpr(expensive_option) {
+          expensive_function(B, tmp, i, j);
+        }
+
+        A(i,j) = tmp;
+    });
+```
+and in the main function:
+```c++
+bool expensive_option = false;
+
+if (expensive_option){
+  blurredKernel<true>(A, B, size);
+}else{
+  blurredKernel<false>(A, B, size);
+}
+```
+
+This reduces the register usage to 24 (again, this is huge because I pick the example, but the goal is to show you the point). The runtime is reduced from 26.77 to 9.74ms (-63%), basically what ncu predicted.
+
 
 
 ## 4. Minimize redundant math operation, use cheap arithmetics
