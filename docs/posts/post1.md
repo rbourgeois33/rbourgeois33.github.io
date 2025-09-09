@@ -129,7 +129,7 @@ On an Nvidia GPU, any request to global memory may end up fetching data from:
 - the L2 cache, visible by all threads,
 - the L1 cache, visible by all threads of a block.
 
-As discussed in [my blog post on the cost of communications](post2.md), on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a `FMA` (fused multiply-add) math operation on that number. I call this ratio the **flop per load** (FPL). The cache hierarchy does mitigates that number. If the L1 cache hits, the memory request will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory *is* more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them *at all cost*.
+As discussed in [my blog post on the cost of communications](post2.md), on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a `FMA` (fused multiply-add) math operation on that number. The cache hierarchy does mitigates that number. If the L1 cache hits, the memory request will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory *is* more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them *at all cost*.
 
 ### 1. Minimize redundant thread-level global memory accesses
 
@@ -164,7 +164,7 @@ Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) {
     A(i) += tmp;
 });
 ```
-**Note**: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a enough good job.
+**Note**: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.
 
 With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree ! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. `std::vector` by `Kokkos::View` in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. [this one](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473).
 #### Profiler diagnosis
