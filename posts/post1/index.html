@@ -198,7 +198,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="four-basic-performance-advices-for-porting-kernels-to-the-gpu">Four basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 9, 2025 12:54:51 UTC"><span class="timeago" datetime="2025-09-09T12:54:51+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 9, 2025 12:54:51 UTC">2025-09-09</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 9, 2025 13:06:32 UTC"><span class="timeago" datetime="2025-09-09T13:06:32+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 9, 2025 13:06:32 UTC">2025-09-09</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -218,7 +218,7 @@
 <li><a href="https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </li>
 </ul>
-<p>These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can, and should apply them straightforwardly while porting your code to the GPU in a time limited environment. If getting <em>optimal</em> performance is crucial to your application, consider learning more about the <em>advanced</em> items, but keep in mind that <strong>performance often comes at the cost of portability</strong>. The advices are general enough so that they should allow speedups on all cards from all vendors.  </p>
+<p>These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting <em>optimal</em> performance is crucial to your application, consider learning more about the <em>advanced</em> items, but keep in mind that <strong>performance often comes at the cost of portability</strong>. The advices are general enough so that they should allow speedups on all cards from all vendors.  </p>
 <p><strong>Note:</strong> The target audience is engineer / researcher that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list !):</p>
 <ul>
 <li><a href="https://docs.Nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
@@ -241,7 +241,6 @@
 <li>Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks, global memory. <em>You can be confused about what is local memory</em>. <a href="#refresher-software-hardware-concepts-in-cuda">refresher</a>.</li>
 <li>Some knowledge of occupancy. <a href="#refresher-on-occupancy">refresher</a>.</li>
 <li>Here are resources on GPU architecture / CUDA programming:<ul>
-<li>The refresher below,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou (Nvidia)</a>,</li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella (Nvidia)</a>,</li>
 <li><a href="https://docs.Nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.html">Achieved occupancy</a>,</li>
