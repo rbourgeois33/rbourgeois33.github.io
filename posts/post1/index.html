@@ -198,7 +198,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="four-basic-performance-advices-for-porting-kernels-to-the-gpu">Four basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 9, 2025 13:26:19 UTC"><span class="timeago" datetime="2025-09-09T13:26:19+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 9, 2025 13:26:19 UTC">2025-09-09</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 9, 2025 13:52:15 UTC"><span class="timeago" datetime="2025-09-09T13:52:15+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 9, 2025 13:52:15 UTC">2025-09-09</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -318,7 +318,7 @@
 <li>the L2 cache, visible by all threads,</li>
 <li>the L1 cache, visible by all threads of a block.</li>
 </ul>
-<p>As discussed in <a href="../post2/">my blog post on the cost of communications</a>, on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a <code>FMA</code> (fused multiply-add) math operation on that number. I call this ratio the <strong>flop per load</strong> (FPL). The cache hierarchy does mitigates that number. If the L1 cache hits, the memory request will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory <em>is</em> more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them <em>at all cost</em>.</p>
+<p>As discussed in <a href="../post2/">my blog post on the cost of communications</a>, on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a <code>FMA</code> (fused multiply-add) math operation on that number. The cache hierarchy does mitigates that number. If the L1 cache hits, the memory request will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory <em>is</em> more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them <em>at all cost</em>.</p>
 <h3 id="1-minimize-redundant-thread-level-global-memory-accesses">1. Minimize redundant thread-level global memory accesses</h3>
 <h4 id="a-first-simple-example-temporary-register-storage">A first simple example, temporary register storage</h4>
 <p>Let's considers at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.cpp">sample-1.cpp</a> where we create two device views:
@@ -347,7 +347,7 @@ Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
     A(i) += tmp;
 });
 </code></pre>
-<p><strong>Note</strong>: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a enough good job.</p>
+<p><strong>Note</strong>: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.</p>
 <p>With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree ! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. <code>std::vector</code> by <code>Kokkos::View</code> in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">this one</a>.</p>
 <h4 id="profiler-diagnosis">Profiler diagnosis</h4>
 <p>Let's look into the profiler report for the first sample code (Download it and load it in <code>ncu-ui</code> ! This works even if you do not have a Nvidia GPU), <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>. First, let's look at the GPU SOL section:
