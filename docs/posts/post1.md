@@ -86,7 +86,7 @@ I acknowledge the use of generative AI to improve wording, and help generating s
 
 The outline for this blog post is the following four rules of thumbs,or advices, largely inspired by [the Nvidia Ampere tuning guide](https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html):
 
-1. [Minimize redundant global memory accesses](#1-minimise-redundant-global-memory-accesses)
+1. [Minimize redundant global memory accesses](#1-minimize-redundant-global-memory-accesses)
 2. [Avoid the use of *Local memory*](#2-avoid-the-use-of-local-memory)
 3. [Understand and improve occupancy](#3-understand-and-improve-occupancy)
 4. [Avoid basic compute mistakes](#4-avoid-basic-compute-mistakes)
@@ -733,7 +733,7 @@ For this section, I provide a [`ncu` report](https://github.com/rbourgeois33/rbo
 ![alt text](image-24.png)
 **Figure 17:** GPU SOL section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
-We can see that the kernel is mostly compute bound, and the profiler mentions: *The ratio of peak float (fp32) to double (fp64) performance on this device is 64:1. The workload achieved 0% of this device's fp32 peak performance and 61% of its fp64 peak performance. If Compute Workload Analysis determines that this workload is fp64 bound, consider using 32-bit precision floating point operations to improve its performance.* The latter point was explored by our intern [Dyhia Elhaddad](https://www.linkedin.com/in/dyhia-elhaddad-912318233/), leading to a X% (WIP) speedup. Refer to [my blog post on verrou (WIP)](posts/post3.md) for more details. In this blog post, I will not talk about the use of reduced precision. Let's look at the compute section of the `ncu` report:
+We can see that the kernel is mostly compute bound, and the profiler mentions: *The ratio of peak float (fp32) to double (fp64) performance on this device is 64:1. The workload achieved 0% of this device's fp32 peak performance and 61% of its fp64 peak performance. If Compute Workload Analysis determines that this workload is fp64 bound, consider using 32-bit precision floating point operations to improve its performance.* The latter point was explored by our intern [Dyhia Elhaddad](https://www.linkedin.com/in/dyhia-elhaddad-912318233/), leading to a X% (WIP) speedup. Refer to [my blog post on verrou (WIP)](post3.md) for more details. In this blog post, I will not talk about the use of reduced precision. Let's look at the compute section of the `ncu` report:
 
 ![alt text](image-25.png)
 **Figure 17:** Compute workload analysis section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
