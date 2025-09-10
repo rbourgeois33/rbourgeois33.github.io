@@ -52,13 +52,16 @@ The level of abstraction is reflected in the implementation which may rely on hi
 
 ## A simple memory model
 
-One result that I like a lot is the one presented in [the second CS267 lecture](https://www.youtube.com/watch?v=ictIJF2WXHE) where the following simple memory model is proposed:
+![alt text](image-27.png)
+**Figure 2:** A sketch of our simple memory model. 
+
+One model that I like a lot is the one presented in [the second CS267 lecture](https://www.youtube.com/watch?v=ictIJF2WXHE) and represented in Figure 2:
 
 - Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties and notations:
     - $M=$ number of words that fits into fast memory,
     - no latency (simplifying assumption),
     - $t_m=$ time per slow memory operation i.e. to move a word from fast to slow memory (inverse BW from Table 1 multiplied by 8 in our case since we are doing FP64 and ignoring latency),
-    - $t_f=$ time per arithmetic operation i.e. the inverse of the FLOPS in Table 1.
+    - $t_f=$ time per arithmetic operation i.e. the inverse of the FLOPS in Table 1. **Important:** Data has to reside in fast memory to be used in computation (just like registers in real machines).
 - Assume an implementation of an algorithm, for which the runtime on the machine is characterized by:
     - $m=$ number of words moved between fast and slow memory to complete the algorithm,
     - $f=$ number of arithmetic operations to complete the algorithm.

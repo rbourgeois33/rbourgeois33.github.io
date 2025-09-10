@@ -5,7 +5,7 @@ _Last updated: {{ git_revision_date_localized }}_.
 ## 0. Introduction
 ### Some context and motivations
 
-I was hired by CEA to join the porting effort of this legacy code to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
+I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
 
 **The nature of the task of porting kernels to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.**
 
