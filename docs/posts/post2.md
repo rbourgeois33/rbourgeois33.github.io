@@ -29,6 +29,7 @@ The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 
 
 As we can see, the FPL has been varying between ~50 and 100. This is really large, and should motivate you to think really hard about how you access memory. In particular, you should avoid memory transfers, or communications as much as you possibly can. This is the idea behind *communication avoiding algorithms* research which lead to the development of the BLAS standard, the Lapack library, and much more.
 
+To mitigate the growth of this number, caches have also made a lot of progress. Caches are essentially intermediate memory spaces placed between the RAM and the compute units. They are typically much smaller than the RAM, but also much faster. They allow to dramatically reduce the cost of redundant memory access. If a piece of memory is loaded once in cache to be used by a compute unit, it might be re-used later by another one without the need to touch the slow RAM. 
 
 ## Some naming conventions
 
