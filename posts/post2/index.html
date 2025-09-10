@@ -114,7 +114,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 10, 2025 11:03:11 UTC"><span class="timeago" datetime="2025-09-10T11:03:11+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 10, 2025 11:03:11 UTC">2025-09-10</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 10, 2025 11:56:04 UTC"><span class="timeago" datetime="2025-09-10T11:56:04+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 10, 2025 11:56:04 UTC">2025-09-10</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>almost exclusively</strong> inspired by this brilliant talk: <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">Communication-Avoiding Algorithms for Linear Algebra, Machine Learning and Beyond</a> by Prof. James Demmel (UC Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his 2022 CS267 class website</a> with free lectures on YouTube.</p>
@@ -200,13 +200,15 @@
 <p>The level of abstraction is reflected in the implementation which may rely on high-level libraries that already implements the kernels, so that you don't have to.</p>
 <p><strong>Note:</strong> In the context of GPU programming such as my <a href="../post1/">my first post</a>, <em>kernel</em> often refer to the level 2. of abstraction, i.e. an algorithm for which the implementation fits in a single CUDA kernel, or equivalently within a <code>Kokkos::parallel_for</code>.</p>
 <h2 id="a-simple-memory-model">A simple memory model</h2>
-<p>One result that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> where the following simple memory model is proposed:</p>
+<p><img alt="alt text" src="../image-27.png" />
+<strong>Figure 2:</strong> A sketch of our simple memory model. </p>
+<p>One model that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> and represented in Figure 2:</p>
 <ul>
 <li>Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties and notations:<ul>
 <li><span class="arithmatex">\(M=\)</span> number of words that fits into fast memory,</li>
 <li>no latency (simplifying assumption),</li>
 <li><span class="arithmatex">\(t_m=\)</span> time per slow memory operation i.e. to move a word from fast to slow memory (inverse BW from Table 1 multiplied by 8 in our case since we are doing FP64 and ignoring latency),</li>
-<li><span class="arithmatex">\(t_f=\)</span> time per arithmetic operation i.e. the inverse of the FLOPS in Table 1.</li>
+<li><span class="arithmatex">\(t_f=\)</span> time per arithmetic operation i.e. the inverse of the FLOPS in Table 1. <strong>Important:</strong> Data has to reside in fast memory to be used in computation (just like registers in real machines).</li>
 </ul>
 </li>
 <li>Assume an implementation of an algorithm, for which the runtime on the machine is characterized by:<ul>
