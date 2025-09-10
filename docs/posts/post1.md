@@ -5,7 +5,7 @@ _Last updated: {{ git_revision_date_localized }}_.
 ## 0. Introduction
 ### Some context and motivations
 
-I was hired by CEA to join the porting effort of this legacy code to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! In this blog post, a *kernel* is a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
+I was hired by CEA to join the porting effort of this legacy code to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
 
 **The nature of the task of porting kernels to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.**
 
@@ -179,7 +179,9 @@ We can see that the memory is heavily used. This begs the question, are we using
 - Memory Throughput [Gbyte/s] 308.75 
     - This is much lower than my GPU's bandwidth of 960.0. Since we saw in the SOL section that we are memory bound, this means that the performance limiter is the caches.
 - Communications between DRAM (Device Memory) and L2:
-    - 1.07 GB reads, which corresponds to $2^{27}(\text{size}) \times 2 (\text{A and B}) \times 4 (\text{bytes per double})=1.07\times 10^9$ bytes. There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !
+    - 1.07 GB reads, which corresponds to:
+  $2^{27}(\text{size}) \times 2 (\text{A and B}) \times 4 (\text{bytes per float})=1.07\times 10^9$ bytes.
+   There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !
 - Communications between L2 and L1:
     - About as much reads into L1, a little more probably due to cache misses. But, an astounding 9.14 GB of data written from L1 to L2, due to cache invalidation ! This  is a great hint of redundant memory accesses; a big discrepancy between expected and observed volumes of exchanges between memories. Essentially, this is the cache that is working hard to save you from you own mistakes, by not writing back all the way to DRAM at each `A(i)+=`. It really is saving you, as if we switch to throughput view, we see that these excessive writes are done at an astounding 1.89 TB/s, twice as fast as my GPU's bandwidth !
   
@@ -370,7 +372,7 @@ The report can be found at [sample-3.ncu-rep](https://github.com/rbourgeois33/rb
 
 As you see, the best layout depends on what *operation* you plan on doing on your data, and *how* you plan on doing it i.e. which algorithm and which implementation. Another example is matrix multiplication where the best layout is cache/register-fitting blocked layout, *because* the best algorithm is cache/register-fitting blocked matrix multiplication. However, if you were to implement the naive version of matrix multiply `C=AB` where, for each element of `C`, you load a row of `A` and a column of `B` and perform the dot product, the best layout is storing `A/B` in row/column-major order respectively. For simulations on unstructured meshes, I recommend using [Z-order curve](https://en.wikipedia.org/wiki/Z-order_curve) re-ordering of the mesh-element. For our CFD code TRUST, this enabled an overall +20% speedup due to a better coalescing (congrats to [Adrien Bruneton](https://www.linkedin.com/in/adrien-bruneton-7bb0ba94/).
 
-**Note:** Non-coalesced write are worst in performance that non-coalesced read, as a write needs to invalidate caches. A single non-coalesced write can invalidate a sector in L1, and L2, requiring the data to be fetched potentially all the way from DRAM for the next load.
+**Note:** A non-coalesced write of some data that is later re-loaded by the same thread is especially bad for performance, as it needs to invalidate caches. A single non-coalesced write can invalidate a sector in L1, and L2, requiring the data to be fetched potentially all the way from DRAM for the next load.
 
 **Note:** The default layout for multidimensional views in Kokkos is LayoutLeft on device, and LayoutRight on host. I believe this is due to historical reasons; Algorithms from the Trilinos library that is built upon Kokkos runs more efficiently this way. But again, this is application-specific.
 
@@ -748,8 +750,8 @@ The main stall reason we observe is *“Stall Short Scoreboard”*. The metric d
 
 Now, let's look at a few basic, easy to avoid compute mistakes.
 ### A few basic compute mistakes
-- use `FMA` instead of `+, *`:
-    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them ! Note: `nvcc` is probably already doing some of that operation.
+- Use `FMA` instead of `+, *`:
+    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them ! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. 
 - Avoid `/`:
     - Divisions are expensive, and probably rely on some kind of iterative process, requiring several `FMA`'s. Try refactoring your math to minimize them, and if you spot that your kernel involves several divisions by the same number, compute the inverse once `double inverse = 1.0/number`, and multiply by `inverse` instead.
 - Do not accidentally use doubles:
@@ -771,3 +773,7 @@ The SIMD pattern, masking templating --->
 
 Participate to [hackathons](https://www.openhackathons.org/s/) ! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the [CINES website](https://www.cines.fr/) for AMD hackathons, and the [Idris website](http://www.idris.fr/) for Nvidia hackathons.
 
+
+## Special thanks
+
+Thanks to Paul Gannay (CEA-MDLS) for providing feedback.
