@@ -35,7 +35,7 @@ The graph stops around 2015, where the ratio of gamma to beta (RAM) was around 1
 
 As we can see, the FPL has been varying between ~50 and 100. This is really large, and should motivate you to think really hard about how you access memory. In particular, you should avoid memory transfers, or communications as much as you possibly can. This is the idea behind *communication avoiding algorithms* research which lead to the development of the BLAS standard, the Lapack library, and much more.
 
-To mitigate the growth of this number, caches have also made a lot of progress. Caches are essentially intermediate memory spaces placed between the RAM and the compute units. They are typically much smaller than the RAM, but also much faster. They allow to RAMatically reduce the cost of redundant memory access. If a piece of memory is loaded once in cache to be used by a compute unit, it might be re-used later by another one without the need to touch the slow RAM. 
+To mitigate the growth of this number, caches have also made a lot of progress. Caches are essentially intermediate memory spaces placed between the RAM and the compute units. They are typically much smaller than the RAM, but also much faster. They allow to dramatically reduce the cost of redundant memory access. If a piece of memory is loaded once in cache to be used by a compute unit, it might be re-used later by another one without the need to touch the slow RAM. 
 
 ## Some naming conventions
 
@@ -90,9 +90,9 @@ It is now clear that to get near optimal performance, we want to reduce the rati
 
 I insist on using the terminology *"properties of the **runtime (of an implementation (of an algorithm (for an operation)))**".* Indeed, in practice, the numbers $f$, $m$ and $CI_{\text{runtime}}=\frac{f}{m}$ should not be obtained by simply computing the ratio of how much memory should be touched, and how many operation should be done ideally, optimally for a given operation. Because most real problems do not fit in cache. Instead, these numbers are a property of how the algorithm is implemented, compiled and ran;
 
-- Operation count for an operation can vary RAMatically between a naive and a smart algorithm. 
-- Performance of an algorithm can vary RAMatically between a naive and a smart implementation.
-- Performance of an implementation can vary RAMatically between a "release" build and a "debug" build, and between machines of different quality.
+- Operation count for an operation can vary dramatically between a naive and a smart algorithm. 
+- Performance of an algorithm can vary dramatically between a naive and a smart implementation.
+- Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between machines of different quality.
 
 A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of $f$ and $m$ that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can  control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me. Most research papers talk about $f$ and $m$ as properties of the algorithm. This makes sense and is a useful approximation, but does implicitly assume that the algorithm is perfectly implemented. In reality, you have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. 
 
