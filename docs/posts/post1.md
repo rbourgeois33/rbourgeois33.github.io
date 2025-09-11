@@ -179,7 +179,7 @@ We can see that both the memory and compute pipelines are heavily used. This beg
 
 - Memory Throughput [Gbyte/s] 308.75 
     - This is much lower than my GPU's bandwidth of 960.0. Since we saw in the SOL section that we are memory bound, this means that the performance limiter is the caches.
-- Communications between DRAM (Device Memory) and L2:
+- Communications between DRAM (Device memory) and L2:
     - 1.07 GB reads, which corresponds to:
   $2^{27}(\text{size}) \times 2 (\text{A and B}) \times 4 (\text{bytes per float})=1.07\times 10^9$ bytes.
    There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !
@@ -208,7 +208,7 @@ Let's now look at the Compute workload analysis since Figure 2 shows us that the
 ![alt text](image-28.png)
 **Figure 6:** Compute workload analysis of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
 
-As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each we load a value from Global Memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.
+As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each we load a value from global memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.
 
 Let's now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep). I recommend using the *"add baseline"* functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:
 
@@ -329,11 +329,11 @@ In this case, each thread is still loading a FP64 numbers, but there is a sector
 
 The ratio of bytes loaded to bytes used per memory request is actually shown in the memory workload analysis. For example, for [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep):
 ![alt text](image-12.png)
-**Figure 10:** DRAM Global Load Access Pattern warning for `sample-1-fixed.cpp`.
+**Figure 10:** DRAM global Load Access Pattern warning for `sample-1-fixed.cpp`.
 
 We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of `ncu` is helpful to detect that precise issue and evaluate the efficiency of a solution.
 
-The *"Source Counter"* section also detects uncoalesced Global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*
+The *"Source Counter"* section also detects uncoalesced global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*
 
 
 
