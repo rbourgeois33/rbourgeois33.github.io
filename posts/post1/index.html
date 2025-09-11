@@ -216,7 +216,7 @@
 <p>I will not go over what I consider to be <em>advanced</em> optimization advices that would get you <em>optimal</em> performances, such as the use of </p>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, </li>
-<li><a href="https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized operations</a>,</li>
+<li><a href="https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized memory access</a>,</li>
 <li><a href="https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </li>
 </ul>
@@ -288,7 +288,7 @@
 <li><a href="#3-understand-and-improve-occupancy">Understand and improve occupancy</a></li>
 <li><a href="#4-avoid-basic-compute-mistakes">Avoid basic compute mistakes</a></li>
 </ol>
-<p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for "Profiler diagnosis" sections.</p>
+<p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
 <p><strong>Note:</strong> I do not mention the topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.</p>
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the four advices, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advices 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
@@ -386,8 +386,8 @@ Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
 <p>The warp states shows you the <strong>reasons</strong> why your warps have been stalled during the execution of your kernel, sorted by importance. This is precisely what you should worry about ! We see two reasons here with quite obscure names <em>Stall long scoreboard</em> and <em>Stall LG throttle</em>. You can drag over your mouse onto the items to get an explanation, e.g. for the first one:
 <img alt="alt text" src="../image-6%20%281%29.jpg" /></p>
 <p><strong>Figure 5:</strong> Metric information for Stall long scoreboard.</p>
-<p>Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !</p>
-<p>Let's now take a look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>. I recommend using the "add baseline" functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:</p>
+<p>Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. <em>Stall LG throttle</em> means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations ! If you still observe that <em>Stall LG throttle</em> is limiting your performance even after removing all redundant memory operations, consider using <a href="https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized memory access</a> to pull more floating point numbers per request.</p>
+<p>Let's now take a look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>. I recommend using the <em>"add baseline"</em> functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:</p>
 <ul>
 <li>
 <p>GPU Speed of light throughput:</p>
@@ -488,7 +488,7 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 <img alt="alt text" src="../image-12.png" />
 <strong>Figure 9:</strong> DRAM Global Load Access Pattern warning for <code>sample-1-fixed.cpp</code>.</p>
 <p>We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of <code>ncu</code> is helpful to detect that precise issue and evaluate the efficiency of a solution.</p>
-<p>The "Source Counter" section also detects uncoalesced Global memory accesses, for instance in <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>, we can read: <em>This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).</em></p>
+<p>The <em>"Source Counter"</em> section also detects uncoalesced Global memory accesses, for instance in <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>, we can read: <em>This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).</em></p>
 <h4 id="advices">Advices</h4>
 <p>These observations should make you want to think about your data layout. In particular, <strong>you should organize your data so that neighboring threads are working on neighboring data</strong>. This means that there is not one universal answer on which storage is better for a dense matrix, row-major or column-major. If you are doing matrix-vector product, sure, row-major is better as it will be more cache friendly and coalescing. If you do matrix-transpose-vector product, you want column-major. In the same way, there is no universal answer to the debate Array of Structure vs. Structure of Array. It all depends on what you will be doing with your data, how you will iterate over it. In other words, <strong>match your data layout with your iteration layout</strong>. You will hear people say things like <em>"LayoutLeft (column-major) is best on GPU, LayoutRight (row-major) is best on CPU"</em>. This is <strong>not</strong> a general truth.<!--- It might be the case for specific codes that work on arrays of specific size, for instance <code>A[M][N]</code> with <span class="arithmatex">\(M\gg N\)</span> and a specific type of operations on it. But this cannot be taught as a generality  ---> Let's look at an example:</p>
 <p>Consider a matrix <code>A</code> of size, <code>NxN</code> and the following two kernels:</p>
@@ -643,7 +643,7 @@ ptxas info    : Used 24 registers, used 0 barriers, 512 bytes cmem[0]
 <ul>
 <li>The fixed version is 32% faster (6.98ms vs 10.37 ms).</li>
 <li>Both compute and memory pipelines are used much more effectively in the fixed version (see SOL section).</li>
-<li>The warps are much less stalled for <em>"Stall long scoreboard"</em> i.e. on local memory dependency in this case.</li>
+<li>The warps are much less stalled for <em>"Stall Long Scoreboard"</em> i.e. on local memory dependency in this case.</li>
 <li>The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100% !
 <img alt="alt text" src="../image-17.png" /></li>
 </ul>
