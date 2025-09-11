@@ -20,7 +20,7 @@ By applying them, I was able to get the following speedups that are measured rel
 I will not go over what I consider to be *advanced* optimization advices that would get you *optimal* performances, such as the use of 
 
 - [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s), 
-- [vectorized operations](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
+- [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
 - [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
 - [hardware-specific optimizations](https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). 
 
@@ -90,7 +90,7 @@ The outline for this blog post is the following four rules of thumbs,or advices,
 3. [Understand and improve occupancy](#3-understand-and-improve-occupancy)
 4. [Avoid basic compute mistakes](#4-avoid-basic-compute-mistakes)
 
-Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for "Profiler diagnosis" sections.
+Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections.
 
 **Note:** I do not mention the topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.
 
@@ -172,7 +172,8 @@ Let's look into the profiler report for the first sample code (Download it and l
 ![alt text](image-1.png)
 **Figure 2:** GPU SOL section of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
 
-We can see that the memory is heavily used. This begs the question, are we using it effectively ? Let's go to the memory workload analysis and dissect some elements
+We can see that both the memory and compute pipelines are heavily used. This begs the question, are we using them effectively ? Let's go to the memory workload analysis first and dissect some elements. 
+
 ![alt text](image-3.png)
 **Figure 3:** Memory workload analysis of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
 
@@ -200,17 +201,24 @@ The warp states shows you the **reasons** why your warps have been stalled durin
 
 **Figure 5:** Metric information for Stall long scoreboard.
 
-Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. Stall LG throttle means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations !
+Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. *Stall LG throttle* means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations ! If you still observe that *Stall LG throttle* is limiting your performance even after removing all redundant memory operations, consider using [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) to pull more floating point numbers per request.
 
-Let's now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep). I recommend using the "add baseline" functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:
+Let's now look at the Compute workload analysis since Figure 2 shows us that the compute pipeline is heavily used. This can be surprising at first considering that our kernel is not compute intensive.
+
+![alt text](image-28.png)
+**Figure 6:** Compute workload analysis of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
+
+As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each we load a value from Global Memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.
+
+Let's now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep). I recommend using the *"add baseline"* functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:
 
 - GPU Speed of light throughput:
-    - The compute pipeline is less busy, I'm honestly not sure why.
+    - The compute pipeline is less busy, as the fixed kernel issues much less instructions to the `LSU` pipe.
     - The memory pipeline is more used (+6%)
 
 - Memory workload Analysis: 
 ![alt text](image-8.png)
-**Figure 6:** Memory workload analysis of [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep).
+**Figure 7:** Memory workload analysis of [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep).
 
     - The memory throughput is much closer to the theoretical peak (865 GB/s, +180%)
     - The previously healthy memory transfers are unchanged, but the L1 to L2 writes are reduced by 94%, as well as the caches hit rates. This shows that our cleaner implementation relies less on the caches, because it has much fewer redundant memory accesses.
@@ -308,12 +316,12 @@ If you spot that neighboring threads (that likely reside on the same block) are 
 When using Nvidia GPUs, threads are packed in so-called warps of 32 threads which execute instructions simultaneously (SIMD). In the same way, when a memory request if performed, (like load one FP64 number from global memory), it is not done for a single one, but in packs of so-called *sectors* of 32 bytes (i.e. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:
 
 ![alt text](image-9.png)
-**Figure 7:** Coalesced memory accesses ([Source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/)). 
+**Figure 8:** Coalesced memory accesses ([Source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/)). 
 
 In this ideal case, each thread is loading a FP64 number. There are 32 threads in a warps so this amount to 32 FP64 number, e.g. 256 bytes which is 8 sectors. This is very efficient because 256 bytes are loaded, and 256 bytes are used: the bandwidth of the GPU is fully used. Let's now look at the worst case scenario:
 
 ![alt text](image-10.png)
-**Figure 8:** strided memory accesses. Adapted from [source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). 
+**Figure 9:** strided memory accesses. Adapted from [source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). 
 
 In this case, each thread is still loading a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own", a whole sector is loaded for each. As a result 32 sectors = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the bandwidth is used, and the case gets worst if you are working with smaller a datatype.
 
@@ -321,11 +329,11 @@ In this case, each thread is still loading a FP64 numbers, but there is a sector
 
 The ratio of bytes loaded to bytes used per memory request is actually shown in the memory workload analysis. For example, for [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep):
 ![alt text](image-12.png)
-**Figure 9:** DRAM Global Load Access Pattern warning for `sample-1-fixed.cpp`.
+**Figure 10:** DRAM Global Load Access Pattern warning for `sample-1-fixed.cpp`.
 
 We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of `ncu` is helpful to detect that precise issue and evaluate the efficiency of a solution.
 
-The "Source Counter" section also detects uncoalesced Global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*
+The *"Source Counter"* section also detects uncoalesced Global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*
 
 
 
@@ -505,16 +513,16 @@ Now, comparing the `ncu` reports [sample-4.ncu-rep](https://github.com/rbourgeoi
 
 - The fixed version is 32% faster (6.98ms vs 10.37 ms).
 - Both compute and memory pipelines are used much more effectively in the fixed version (see SOL section).
-- The warps are much less stalled for *"Stall long scoreboard"* i.e. on local memory dependency in this case.
+- The warps are much less stalled for *"Stall Long Scoreboard"* i.e. on local memory dependency in this case.
 - The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100% !
 ![alt text](image-17.png)
 
-**Figure 10:** Memory workload analysis for sample-4-fixed.ncu-rep, with sample-4.ncu-rep as a baseline. Zoom on Kernel <-> L1 interactions.
+**Figure 11:** Memory workload analysis for sample-4-fixed.ncu-rep, with sample-4.ncu-rep as a baseline. Zoom on Kernel <-> L1 interactions.
 
 - We also see that the L1 cache is much less used (-92%) in the fixed version, because local memory resides in the L1 cache.
 - Lastly, the source view allows to track the line(s) responsible for local memory usage:
 ![alt text](image-16.png)  
-**Figure 11:** Local memory usage localization in `ncu`'s source view for [sample-4.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-4.ncu-rep).
+**Figure 12:** Local memory usage localization in `ncu`'s source view for [sample-4.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-4.ncu-rep).
 
 As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in `ncu`. This is also the case for register spilling, as detailed in the next section.
 
@@ -550,7 +558,7 @@ I will only cover the first item in depth, as my experience with [launch_bounds]
 The reason why high occupancy is important is that is enables *"latency hiding"*. As explained in [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3), having multiple active warps allows to not waste clock cycles:
 ![alt text](image-18.png)
 
-**Figure 12** Latency hiding, source: [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3).
+**Figure 13** Latency hiding, source: [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3).
 
 In this picture, we zoom into an SM for the execution of three instructions:
 
@@ -566,7 +574,7 @@ Then, `W0` cannot issue `I2` since this instructions depends on the result of th
 
 #### When to stop: just make sure your hardware is used
 
-In general, more occupancy is better and you should try to maximize it. But do not fall in the *occupancy trap*. Sometime, kernels run better at low occupancy; applying advice 1 i.e. using register storage to avoid thread-level redundant memory accesses might impact negatively occupancy but often improve performance. Same story for shared memory usage. Lastly, having a high ILP often implies using more registers as results of the instructions must coexists in allocated registers. But this might not be an issue as latency is hidden anyway. Imagine Figure 12 with:
+In general, more occupancy is better and you should try to maximize it. But do not fall in the *occupancy trap*. Sometime, kernels run better at low occupancy; applying advice 1 i.e. using register storage to avoid thread-level redundant memory accesses might impact negatively occupancy but often improve performance. Same story for shared memory usage. Lastly, having a high ILP often implies using more registers as results of the instructions must coexists in allocated registers. But this might not be an issue as latency is hidden anyway. Imagine Figure 13 with:
 
 - `I0` an instruction that takes 18 cycles to complete (finishes at `C18`) followed by
 - `I1-I17`, 17 instructions that take each one cycle to complete (finishes at `C2-C18`), and,
@@ -578,17 +586,17 @@ The SM would issue an instruction per clock cycle, not one cycle would be wasted
 Let's look at  [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep) that shows an horrendous occupancy (we will understand why and how to fix it later). The issue is striking in the SOL section:
 ![alt text](image-19.png)
 
-**Figure 13** SOL section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
+**Figure 14** SOL section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
 
 Even though the there are a lot of threads, the hardware is barely used, and it is even hinted that there is an issue with latency. The warp state statistics says that we are mostly waiting on long scoreboard dependency. The occupancy section is clear:
 ![alt text](image-21.png)
 
-**Figure 14:** Occupancy section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
+**Figure 15:** Occupancy section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
 
 The achieved occupancy is only of 12% ! This is extremely low, and `ncu` predicts that we could get a 66% speedup by improving it. We will see that this prediction is accurate in the "[Template away heavy branches](#template-away-heavy-branches)" section. It also indicates that the limiting factor is the register usage. Indeed, let's look at the occupancy graphs:
 
 ![alt text](image-22.png)
-**Figure 15:** Occupancy graphs of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
+**Figure 16:** Occupancy graphs of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
 
 They provide a very accurate prediction of how would the occupancy of your kernel vary if you managed to change: -the register count per threads -the block size -the shared memory usage. The current state of the kernel is represented as dots on the line graphs. Note that these graphs are not the result of the kernel being instrumented, but solely from an occupancy calculation that can be done at compile time.
 We can see that we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move the register usage to the left, we can expect significant progress.  Now, let's see how to do this.
@@ -648,7 +656,7 @@ we see `ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]`. 
 
 ![alt text](image-23.png)
 
-**Figure 16:** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.ncu-rep)
+**Figure 17:** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.ncu-rep)
 
 The block size picked by the `Kokkos::MDRangePolicy` is 32, which is very a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size !
 
@@ -732,12 +740,12 @@ As mentioned in the introduction, most of the kernels I work with in the context
 ### Profiler diagnosis
 For this section, I provide a [`ncu` report](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep) for a compute bound kernel from TRUST. Let's open it up and look at the relevant sections, starting with SOL:
 ![alt text](image-24.png)
-**Figure 17:** GPU SOL section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
+**Figure 18:** GPU SOL section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
 We can see that the kernel is mostly compute bound, and the profiler mentions: *The ratio of peak float (fp32) to double (fp64) performance on this device is 64:1. The workload achieved 0% of this device's fp32 peak performance and 61% of its fp64 peak performance. If Compute Workload Analysis determines that this workload is fp64 bound, consider using 32-bit precision floating point operations to improve its performance.* The latter point was explored by our intern [Dyhia Elhaddad](https://www.linkedin.com/in/dyhia-elhaddad-912318233/), leading to a X% (WIP) speedup. Refer to [my blog post on verrou (WIP)](post3.md) for more details. In this blog post, I will not talk about the use of reduced precision. Let's look at the compute section of the `ncu` report:
 
 ![alt text](image-25.png)
-**Figure 17:** Compute workload analysis section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
+**Figure 19:** Compute workload analysis section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
 Unsurprisingly, we can see that the most used pipeline is `FP64`(FP64 `FMA`), followed by `ALU`(bool manipulations, int32 operations except ADD and MUL), `FMA` (FP32 and int32 `ADD` and `MUL`) and `LSU` (Load/store operations to L1). The graph on the left shows the percentage of cycle during which the different pipeline were active, while the graph on right shows the achieved % of peak instructions executed. 
 
