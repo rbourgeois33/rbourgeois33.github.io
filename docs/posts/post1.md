@@ -760,7 +760,7 @@ Now, let's look at a few basic, easy to avoid compute mistakes.
     - If your kernel involves a lot of not unrolled loop, the integer pipeline can be heavily utilized and become a bottleneck. We typically do not think about this as we only talk about the FP32 and FP64 throughput, but it can happen. To spot this, look for:
         - a lot of `FMA` in the compute workload analysis section,  
         - a lot of `IMAD` in the instruction statistics section,
-        - a lot of *"Stall Short Scoreboard"* in the warp state statistics section.
+        - a lot of *"Stall Wait"* in the warp state statistics section.
   
 <!---
 ## 5. Avoid thread divergence
