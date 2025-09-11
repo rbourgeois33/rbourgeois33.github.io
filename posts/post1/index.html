@@ -200,7 +200,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="four-basic-performance-advices-for-porting-kernels-to-the-gpu">Four basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 11, 2025 14:27:08 UTC"><span class="timeago" datetime="2025-09-11T14:27:08+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 11, 2025 14:27:08 UTC">2025-09-11</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 11, 2025 14:37:18 UTC"><span class="timeago" datetime="2025-09-11T14:37:18+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 11, 2025 14:37:18 UTC">2025-09-11</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -390,7 +390,7 @@ Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
 <p>Let's now look at the Compute workload analysis since Figure 2 shows us that the compute pipeline is heavily used. This can be surprising at first considering that our kernel is not compute intensive.</p>
 <p><img alt="alt text" src="../image-28.png" />
 <strong>Figure 6:</strong> Compute workload analysis of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>.</p>
-<p>As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each we load a value from global memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.</p>
+<p>As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each time we load a value from global memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.</p>
 <p>Let's now take a look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep">sample-1-fixed.ncu-rep</a>. I recommend using the <em>"add baseline"</em> functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:</p>
 <ul>
 <li>
