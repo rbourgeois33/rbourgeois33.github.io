@@ -114,16 +114,22 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 10, 2025 11:56:04 UTC"><span class="timeago" datetime="2025-09-10T11:56:04+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 10, 2025 11:56:04 UTC">2025-09-10</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 11, 2025 08:37:19 UTC"><span class="timeago" datetime="2025-09-11T08:37:19+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 11, 2025 08:37:19 UTC">2025-09-11</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
-<p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>almost exclusively</strong> inspired by this brilliant talk: <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">Communication-Avoiding Algorithms for Linear Algebra, Machine Learning and Beyond</a> by Prof. James Demmel (UC Berkley), as well as a the <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his 2022 CS267 class website</a> with free lectures on YouTube.</p>
+<p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>almost exclusively</strong> inspired by this brilliant talk: <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">Communication-Avoiding Algorithms for Linear Algebra, Machine Learning and Beyond</a> by Prof. James Demmel (UC Berkley), as well as a <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his 2022 CS267 class website</a> with free lectures on YouTube.</p>
 <p><strong>Note</strong> The terms <em>communications</em> and <em>memory transfers</em> will be used interchangeably. Also in the present context, a <em>word</em> refers to a single FP64 number.</p>
 <h2 id="hardware-trends">Hardware trends</h2>
-<p>Figure 1 shows that, since around ~1992, memory transfers, whether within DRAM or across a network, have been more expensive than a double precision operation. DRAM transfers include all data movement within the RAM of the CPU or the GPU of your computer, as well as within the RAM of a cluster's node, or across the DRAMs of multiple GPUs in the same node. Network transfers, on the other hand, refer to data exchanged between the nodes of a supercomputer through ethernet cables.
+<p>Figure 1 shows that, since around ~1992, memory transfers, whether within RAM or across a network, have been more expensive than a double precision operation. RAM transfers include all data movement within the RAM(s) of:</p>
+<ul>
+<li>the CPU or the GPU of your computer, </li>
+<li>a cluster's node,</li>
+<li>multiple GPUs in the same node. </li>
+</ul>
+<p>Network transfers, on the other hand, refer to data exchanged between the nodes of a supercomputer through ethernet cables.
 <img alt=" " src="../image.png" />
 <strong>Figure 1:</strong> Evolution of the time per flop (gamma), inverse bandwidth (beta) and latency (alpha) between ~1980 to ~2015. <a href="https://extremecomputingtraining.anl.gov/wp-content/uploads/sites/96/2025/08/Communication-Avoiding-Algorithms-for-Linear-Algebra-Machine-Learning-and-Beyond-v2_ATPESC-2025.pdf">Source</a>.</p>
-<p>The graph stops around 2015, where the ratio of gamma to beta (DRAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong>, i.e. the average amount of FP64 operation you can do in the time that it takes to load one (non-cached) word from DRAM, for recent GPUs:</p>
+<p>The graph stops around 2015, where the ratio of gamma to beta (RAM) was around 10. Let's look at the current FP64 <strong>Flop Per Load (FPL) factor</strong>, i.e. the average amount of FP64 operation you can do in the time that it takes to load one (non-cached) word from RAM, for recent GPUs:</p>
 <table>
 <thead>
 <tr>
@@ -182,7 +188,7 @@
 <p><strong>Table 1:</strong> Evolution of the BW, FP64 flops and FPL for recent GPUs. FPL is computed as <span class="arithmatex">\(\frac{FP64 \ Flops}{BW}*8\)</span> since a FP64 number is made of 8 bytes.</p>
 <p><strong>Note:</strong> Modern GPUs such as the one in this table make up for the overwhelming majority of the computational capacity of the world's top supercomputers.</p>
 <p>As we can see, the FPL has been varying between ~50 and 100. This is really large, and should motivate you to think really hard about how you access memory. In particular, you should avoid memory transfers, or communications as much as you possibly can. This is the idea behind <em>communication avoiding algorithms</em> research which lead to the development of the BLAS standard, the Lapack library, and much more.</p>
-<p>To mitigate the growth of this number, caches have also made a lot of progress. Caches are essentially intermediate memory spaces placed between the RAM and the compute units. They are typically much smaller than the RAM, but also much faster. They allow to dramatically reduce the cost of redundant memory access. If a piece of memory is loaded once in cache to be used by a compute unit, it might be re-used later by another one without the need to touch the slow RAM. </p>
+<p>To mitigate the growth of this number, caches have also made a lot of progress. Caches are essentially intermediate memory spaces placed between the RAM and the compute units. They are typically much smaller than the RAM, but also much faster. They allow to RAMatically reduce the cost of redundant memory access. If a piece of memory is loaded once in cache to be used by a compute unit, it might be re-used later by another one without the need to touch the slow RAM. </p>
 <h2 id="some-naming-conventions">Some naming conventions</h2>
 <p>I want to clarify some conventions, and push for the use of clear terminologies when talking about numerical algorithms. Let's take some time to realize that the following terms refer to very different things (inspired by <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.pdf">Mark Hoemmen's PhD introduction</a>):</p>
 <ul>
@@ -204,7 +210,7 @@
 <strong>Figure 2:</strong> A sketch of our simple memory model. </p>
 <p>One model that I like a lot is the one presented in <a href="https://www.youtube.com/watch?v=ictIJF2WXHE">the second CS267 lecture</a> and represented in Figure 2:</p>
 <ul>
-<li>Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. DRAM / registers) and the following properties and notations:<ul>
+<li>Assume a simple machine with just 2 levels of memory, fast and slow (think of e.g. RAM / registers) and the following properties and notations:<ul>
 <li><span class="arithmatex">\(M=\)</span> number of words that fits into fast memory,</li>
 <li>no latency (simplifying assumption),</li>
 <li><span class="arithmatex">\(t_m=\)</span> time per slow memory operation i.e. to move a word from fast to slow memory (inverse BW from Table 1 multiplied by 8 in our case since we are doing FP64 and ignoring latency),</li>
@@ -218,7 +224,7 @@
 </li>
 </ul>
 <p>We can then define <span class="arithmatex">\(CI_{\text{runtime}}=\frac{f}{m}\)</span>, a property  <strong>of the runtime of an implementation of the algorithm</strong> that is called <em>the computational intensity</em>. It is the average number of flops per slow memory access. While the previously defined FPL factor, <strong>a property of the machine</strong>, is given as <span class="arithmatex">\(FPL_{\text{hardware}}=\frac{t_m}{t_f}\)</span>.</p>
-<p><strong>Note:</strong> Nvidia GPUs have 4 levels of memory: DRAM, L2 and L1 caches, and registers. Each level has ~3-4x difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.</p>
+<p><strong>Note:</strong> Nvidia GPUs have 4 levels of memory: RAM, L2 and L1 caches, and registers. Each level has ~3-4x difference in bandwidth. Some CPUs have 5 levels with an additional L3 cache. Real memory models are super complicated ! However, it is clear that memory hierarchies are omnipresent and that thinking hard about them helps both CPU and GPU performances.</p>
 <h2 id="getting-good-performance">Getting good performance</h2>
 <p>The minimum possible time for  our algorithm is <span class="arithmatex">\(t_{\text{ideal}}=ft_f\)</span>, which is attained when the problem fits in fast memory (<span class="arithmatex">\(m&lt;M\)</span>) and no slow memory transaction are required. This implies that we don't read any initial data from slow memory nor store in it, this is never the case in practice. </p>
 <p>Let's compare this to the real time for a big enough problem <span class="arithmatex">\(t_{\text{real}}=ft_f+mt_m\)</span> which rewrites:</p>
@@ -227,9 +233,9 @@
 <h2 id="properties-of-the-runtime-vs-properties-of-an-implementation">Properties of the runtime vs. properties of an implementation</h2>
 <p>I insist on using the terminology <em>"properties of the </em><em>runtime (of an implementation (of an algorithm (for an operation)))</em><em>".</em> Indeed, in practice, the numbers <span class="arithmatex">\(f\)</span>, <span class="arithmatex">\(m\)</span> and <span class="arithmatex">\(CI_{\text{runtime}}=\frac{f}{m}\)</span> should not be obtained by simply computing the ratio of how much memory should be touched, and how many operation should be done ideally, optimally for a given operation. Because most real problems do not fit in cache. Instead, these numbers are a property of how the algorithm is implemented, compiled and ran;</p>
 <ul>
-<li>Operation count for an operation can vary dramatically between a naive and a smart algorithm. </li>
-<li>Performance of an algorithm can vary dramatically between a naive and a smart implementation.</li>
-<li>Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between machines of different quality.</li>
+<li>Operation count for an operation can vary RAMatically between a naive and a smart algorithm. </li>
+<li>Performance of an algorithm can vary RAMatically between a naive and a smart implementation.</li>
+<li>Performance of an implementation can vary RAMatically between a "release" build and a "debug" build, and between machines of different quality.</li>
 </ul>
 <p>A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(m\)</span> that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can  control the L1 cache via <code>shared</code> memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me. Most research papers talk about <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(m\)</span> as properties of the algorithm. This makes sense and is a useful approximation, but does implicitly assume that the algorithm is perfectly implemented. In reality, you have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. </p>
 <p>Let's consider the example of a very well-studied operation: the <span class="arithmatex">\(n\times n\)</span>, <strong>dense matrix multiplication</strong>, <code>C+=A.B</code> (1st homework of <a href="https://sites.google.com/lbl.gov/cs267-spr2022">CS267</a> and topic of the 2nd and 3rd lectures). </p>
