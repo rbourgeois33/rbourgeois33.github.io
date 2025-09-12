@@ -148,3 +148,20 @@ Well, all that is quite fascinating, but also overwhelming don't you think ? Wel
 ## Special thanks
 
 Thanks to Ivan Huard (EPITA) for providing feedback.
+
+## Comments 
+<script src="https://giscus.app/client.js"
+        data-repo="rbourgeois33/rbourgeois33.github.io"
+        data-repo-id="R_kgDOPmDw5g"
+        data-category="General"
+        data-category-id="DIC_kwDOPmDw5s4CvWWl"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+</script>

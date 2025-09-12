@@ -785,3 +785,20 @@ Participate to [hackathons](https://www.openhackathons.org/s/) ! These are a fan
 ## Special thanks
 
 Thanks to Paul Gannay (CEA-MDLS) for providing feedback.
+
+## Comments 
+<script src="https://giscus.app/client.js"
+        data-repo="rbourgeois33/rbourgeois33.github.io"
+        data-repo-id="R_kgDOPmDw5g"
+        data-category="General"
+        data-category-id="DIC_kwDOPmDw5s4CvWWl"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+</script>
