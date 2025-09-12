@@ -80,6 +80,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#comments">Comments</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post3/">(WIP) Testing mixed precision at runtime with verrou</a>
@@ -114,7 +116,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="the-cost-of-communications">The cost of communications</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 11, 2025 13:41:28 UTC"><span class="timeago" datetime="2025-09-11T13:41:28+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 11, 2025 13:41:28 UTC">2025-09-11</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 12, 2025 08:52:24 UTC"><span class="timeago" datetime="2025-09-12T08:52:24+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 12, 2025 08:52:24 UTC">2025-09-12</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&amp;label=Visits" /></p>
 <h2 id="disclaimer">Disclaimer</h2>
 <p>This post was originally supposed to be a short introduction within <a href="../post1/">my first post on GPU kernel optimization</a>, but then I realized that I liked to talk too much about it and went out of scope. This is <strong>almost exclusively</strong> inspired by this brilliant talk: <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">Communication-Avoiding Algorithms for Linear Algebra, Machine Learning and Beyond</a> by Prof. James Demmel (UC Berkley), as well as a <a href="https://sites.google.com/lbl.gov/cs267-spr2022">his 2022 CS267 class website</a> with free lectures on YouTube.</p>
@@ -281,6 +283,22 @@ So, you might wonder, what should I do ? How do I know if there is a better algo
 <p>Well, all that is quite fascinating, but also overwhelming don't you think ? Well, you might not have to think about all this lower bound theory to get good speedups. In <a href="../post1/">my first post on GPU kernel optimization</a> I go over frequent coding mistakes that leads to extra useless communications. In that post, I will not give guidelines to reach theoretical lower bounds for your case. This is just too general to be discussed in a blog-post. As we saw, it constitutes a research topic on it's own and implies a deep re-thinking of the algorithms and data structures. No, here we will stay simple and focus on the following: given a GPU kernel, what frequent coding mistakes should we avoid to limit the amount of data we load/store from slow memory.</p>
 <h2 id="special-thanks">Special thanks</h2>
 <p>Thanks to Ivan Huard (EPITA) for providing feedback.</p>
+<h2 id="comments">Comments</h2>
+<p><script src="https://giscus.app/client.js"
+        data-repo="rbourgeois33/rbourgeois33.github.io"
+        data-repo-id="R_kgDOPmDw5g"
+        data-category="General"
+        data-category-id="DIC_kwDOPmDw5s4CvWWl"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+</script></p>
               
             </div>
           </div><footer>
