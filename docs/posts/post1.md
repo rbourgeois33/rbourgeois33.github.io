@@ -24,7 +24,7 @@ I will not go over what I consider to be *advanced* optimization advices that wo
 - [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
 - [hardware-specific optimizations](https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). 
 
-These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advices are general enough so that they should allow speedups on all cards from all vendors.  
+These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advices are general enough so that they should allow speedups on all cards from all vendors. Note that I will point out in when any of the *advanced* optimizations would be relevant throughout the blogpost.
 
 **Note:** The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list !):
 
@@ -599,7 +599,7 @@ The achieved occupancy is only of 12% ! This is extremely low, and `ncu` predict
 **Figure 16:** Occupancy graphs of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
 
 They provide a very accurate prediction of how would the occupancy of your kernel vary if you managed to change: -the register count per threads -the block size -the shared memory usage. The current state of the kernel is represented as dots on the line graphs. Note that these graphs are not the result of the kernel being instrumented, but solely from an occupancy calculation that can be done at compile time.
-We can see that we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move the register usage to the left, we can expect significant progress.  Now, let's see how to do this.
+We can see that we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move the register usage to the left, we can expect significant progress. Now, let's see how to do this.
 
 ### How to reduce per-thread register usage
 #### Re-order operations ?
@@ -754,9 +754,9 @@ By itself, this section does not really tell that the compute is the bottleneck,
 ![alt text](image-26.png)
 Warp State Statistics section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
-The main stall reason we observe is *“Stall Short Scoreboard”*. The metric description is somewhat unclear to me, but based on this [Stack Overflow post](https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex), it includes stalls caused by dependencies on FP64 on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”.
+The main stall reason we observe is *“Stall Short Scoreboard”*. The metric description is somewhat unclear to me, but based on this [Stack Overflow post](https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex), it includes stalls caused by dependencies on FP64 on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”. 
 
-Now, let's look at a few basic, easy to avoid compute mistakes.
+If applicable, you should consider using [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/) that have a much larger throughput than standart FMA pipes. Now, let's look at a few basic, easy to avoid compute mistakes.
 ### A few basic compute mistakes
 - Use `FMA` instead of `+, *`:
     - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them ! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. 
