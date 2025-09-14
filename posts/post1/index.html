@@ -22,17 +22,7 @@
       <script src="../../js/html5shiv.min.js"></script>
     <![endif]-->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-      <script>hljs.highlightAll();</script>
-   
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4CKCXPSVEH"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-4CKCXPSVEH');
-  </script>
-
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -202,7 +192,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="four-basic-performance-advices-for-porting-kernels-to-the-gpu">Four basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 12, 2025 09:09:21 UTC"><span class="timeago" datetime="2025-09-12T09:09:21+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 12, 2025 09:09:21 UTC">2025-09-12</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 14, 2025 14:09:28 UTC"><span class="timeago" datetime="2025-09-14T14:09:28+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 14, 2025 14:09:28 UTC">2025-09-14</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -354,9 +344,10 @@ Kokkos::View&lt;float*&gt; B(&quot;B&quot;, size);
 <p><strong>Note</strong>: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.</p>
 <p>With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree ! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. <code>std::vector</code> by <code>Kokkos::View</code> in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">this one</a>.</p>
 <h4 id="profiler-diagnosis">Profiler diagnosis</h4>
-<p>Let's look into the profiler report for the first sample code (Download it and load it in <code>ncu-ui</code> ! This works even if you do not have a Nvidia GPU), <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>. First, let's look at the GPU SOL section:
+<p>Let's look into the profiler report for the first sample code (Download it and load it in <code>ncu-ui</code> ! This works even if you do not have a Nvidia GPU), <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>. First, let's look at the GPU Speed Of Light (SOL) section:
 <img alt="alt text" src="../image-1.png" />
 <strong>Figure 2:</strong> GPU SOL section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>.</p>
+<p><strong>Note:</strong> According to the <a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html"><code>ncu</code> profiling guide</a>; <em>SOL is a High-level overview of the throughput for compute and memory resources of the GPU. For each unit, the throughput reports the achieved percentage of utilization with respect to the theoretical maximum</em>. It's a fancy marketing term, yes, but quite a clever one if you ask me. Essentially, it tells you how much of the physical material's capacities you are using, and quicky tells you if you are limited by compute, or memory. Ideally, you know you are doing a good job of using your GPU when you are using at least 80% of one pipeline, and that it is limited by either the DRAM bandwith, or the peak FLOPs capacity.</p>
 <p>We can see that both the memory and compute pipelines are heavily used. This begs the question, are we using them effectively ? Let's go to the memory workload analysis first and dissect some elements. </p>
 <p><img alt="alt text" src="../image-3.png" />
 <strong>Figure 3:</strong> Memory workload analysis of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep">sample-1.ncu-rep</a>.</p>
@@ -479,7 +470,7 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 <p>I will not go through the <code>ncu</code> reports for this second example as the behavior is really similar to sample-1, but feel free to look a them yourself. The speedup obtained is 75% which is not surpising, since I pick the examples.</p>
 <p><strong>Warning:</strong> Note that when using static arrays as temporary storage, you might accidentally trigger <em>Local memory</em> usage as it may resides in the <em>stack</em> or cause <em>register spilling</em>. Please refer to <a href="#2-avoid-the-use-of-local-memory">section 2</a> to avoid this !</p>
 <h3 id="minimize-block-level-redundant-memory-accesses-shared-memory">Minimize block-level redundant memory accesses: shared memory</h3>
-<p>If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant <strong>block-level</strong> memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime ! :). To use shared memory in Kokkos, look at <a href="https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html">Hierarchical Parallelism</a>. As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.</p>
+<p>If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant <strong>block-level</strong> memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime !). To use shared memory in Kokkos, look at <a href="https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html">Hierarchical Parallelism</a>. As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.</p>
 <h3 id="minimize-redundant-kernel-level-memory-accesses-coalescing">Minimize redundant kernel-level memory accesses: coalescing</h3>
 <h4 id="sectors-and-cache-line">Sectors and cache line</h4>
 <p>When using Nvidia GPUs, threads are packed in so-called warps of 32 threads which execute instructions simultaneously (SIMD). In the same way, when a memory request if performed, (like load one FP64 number from global memory), it is not done for a single one, but in packs of so-called <em>sectors</em> of 32 bytes (i.e. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:</p>
