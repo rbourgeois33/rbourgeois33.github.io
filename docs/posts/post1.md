@@ -1,4 +1,4 @@
-# Four basic performance advices for porting kernels to the GPU.
+# Four basic performance advice for porting kernels to the GPU.
 _Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
 
@@ -7,28 +7,29 @@ _Last updated: {{ git_revision_date_localized }}_.
 
 I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
 
-**The nature of the task of porting kernels to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.**
+**The nature of the task of porting kernels to the GPU, especially when time is limited, often leads to small mistakes that can undermine performance.**
 
 The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance.
 
 By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
 
-- A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstruous kernel.
+- A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
-I will not go over what I consider to be *advanced* optimization advices that would get you *optimal* performances, such as the use of 
+I will not go over what I consider to be *advanced* optimization advice that would get you *optimal* performances, such as the use of 
 
 - [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s), 
 - [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
 - [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
 - [hardware-specific optimizations](https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). 
 
-These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advices are general enough so that they should allow speedups on all cards from all vendors. Note that I will point out in when any of the *advanced* optimizations would be relevant throughout the blogpost.
+These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advice I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advice are general enough so that they should allow speedups on GPUs from all vendors. Note that I will point out in when any of the *advanced* optimizations would be relevant throughout the blogpost.
 
 **Note:** The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list!):
 
 - [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
+- [CUDA Core Compute Libraries](https://github.com/nvidia/cccl).
 - [kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
 - [Trilinos](https://trilinos.github.io/) for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.
 - [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs)
@@ -73,9 +74,9 @@ Although not necessary for getting through this blog post, I recommend you learn
 
 If you think I wrote something that is wrong, or misleading please let me know! 
 
-I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advices that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! 
+I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! 
 
-I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **cool**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
+I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **important**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
 It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Moreover, I plan on adding to this blog post as I learn more.
 
@@ -83,7 +84,7 @@ I acknowledge the use of generative AI to improve wording, and help generating s
 
 ### Outline
 
-The outline for this blog post is the following four rules of thumbs,or advices, largely inspired by [the Nvidia Ampere tuning guide](https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html):
+The outline for this blog post is the following four rules of thumbs,or advice, largely inspired by [the Nvidia Ampere tuning guide](https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html):
 
 1. [Minimize redundant global memory accesses](#1-minimize-redundant-global-memory-accesses)
 2. [Avoid the use of *Local memory*](#2-avoid-the-use-of-local-memory)
@@ -96,7 +97,7 @@ Feel free to jump straight into your sections of interest. One of the main inter
 
 ### Before we start
 
-Before going into the four advices, I invite you to read [my blog post on the cost of communications](post2.md) that is a unnecessary long introduction for advices 1 and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). 
+Before going into the four advice, I invite you to read [my blog post on the cost of communications](post2.md) that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). 
 
 All sample code and `ncu` reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample) along with compilation and execution instructions. The reports were generated with my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
 
@@ -529,7 +530,7 @@ Now, comparing the `ncu` reports [sample-4.ncu-rep](https://github.com/rbourgeoi
 As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in `ncu`. This is also the case for register spilling, as detailed in the next section.
 
 ### Avoid register spilling
-Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advices will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
+Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
 
 **Note:** If register spilling was always bad, CUDA would not allow it. It might be useful sometimes but in my limited experience I could always get rid of it and get good performances.
 
