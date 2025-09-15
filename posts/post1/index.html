@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Four basic performance advices for porting kernels to the GPU - Rémi Bourgeois's blog</title>
+    <title>Four basic performance advice for porting kernels to the GPU - Rémi Bourgeois's blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Four basic performance advices for porting kernels to the GPU";
+        var mkdocs_page_name = "Four basic performance advice for porting kernels to the GPU";
         var mkdocs_page_input_path = "posts/post1.md";
         var mkdocs_page_url = null;
       </script>
@@ -50,7 +50,7 @@
               </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Four basic performance advices for porting kernels to the GPU</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Four basic performance advice for porting kernels to the GPU</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#0-introduction">0. Introduction</a>
         <ul>
@@ -182,7 +182,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Posts</li>
-      <li class="breadcrumb-item active">Four basic performance advices for porting kernels to the GPU</li>
+      <li class="breadcrumb-item active">Four basic performance advice for porting kernels to the GPU</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -191,31 +191,32 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="four-basic-performance-advices-for-porting-kernels-to-the-gpu">Four basic performance advices for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 15, 2025 06:46:17 UTC"><span class="timeago" datetime="2025-09-15T06:46:17+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 15, 2025 06:46:17 UTC">2025-09-15</span></em>.<br />
+                <h1 id="four-basic-performance-advice-for-porting-kernels-to-the-gpu">Four basic performance advice for porting kernels to the GPU.</h1>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 15, 2025 12:09:08 UTC"><span class="timeago" datetime="2025-09-15T12:09:08+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 15, 2025 12:09:08 UTC">2025-09-15</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
 <p>I was hired by CEA to join the porting effort of the the legacy code <a href="https://cea-trust-platform.github.io/">TRUST</a> to the GPU using <a href="https://github.com/kokkos/kokkos">Kokkos</a>. This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU! In this blog post, the term <em>kernel</em> refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a <code>Kokkos::parallel_for</code>. As I went and optimized some kernels, something struck me:</p>
-<p><strong>The nature of the task of porting kernels to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.</strong></p>
+<p><strong>The nature of the task of porting kernels to the GPU, especially when time is limited, often leads to small mistakes that can undermine performance.</strong></p>
 <p>The goal of this blog post is to give you <em>basic</em>, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a <em>reasonable</em> performance.</p>
 <p>By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:</p>
 <ul>
-<li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstruous kernel.</li>
+<li>A 40-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473">convection kernel</a> from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). <strong>Brace yourself</strong>: this is a monstrous kernel.</li>
 <li>A 20-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
 <li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU).</li>
 </ul>
-<p>I will not go over what I consider to be <em>advanced</em> optimization advices that would get you <em>optimal</em> performances, such as the use of </p>
+<p>I will not go over what I consider to be <em>advanced</em> optimization advice that would get you <em>optimal</em> performances, such as the use of </p>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, </li>
 <li><a href="https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized memory access</a>,</li>
 <li><a href="https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a>,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>. </li>
 </ul>
-<p>These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting <em>optimal</em> performance is crucial to your application, consider learning more about the <em>advanced</em> items, but keep in mind that <strong>performance often comes at the cost of portability</strong>. The advices are general enough so that they should allow speedups on all cards from all vendors. Note that I will point out in when any of the <em>advanced</em> optimizations would be relevant throughout the blogpost.</p>
+<p>These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advice I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting <em>optimal</em> performance is crucial to your application, consider learning more about the <em>advanced</em> items, but keep in mind that <strong>performance often comes at the cost of portability</strong>. The advice are general enough so that they should allow speedups on GPUs from all vendors. Note that I will point out in when any of the <em>advanced</em> optimizations would be relevant throughout the blogpost.</p>
 <p><strong>Note:</strong> The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list!):</p>
 <ul>
 <li><a href="https://docs.Nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
+<li><a href="https://github.com/nvidia/cccl">CUDA Core Compute Libraries</a>.</li>
 <li><a href="https://github.com/kokkos/kokkos-kernels">kokkos kernels</a> for portable BLAS, sparse BLAS and graph kernels.</li>
 <li><a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.</li>
 <li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs)</li>
@@ -268,12 +269,12 @@
 </ul>
 <h3 id="disclaimers">Disclaimers</h3>
 <p>If you think I wrote something that is wrong, or misleading please let me know! </p>
-<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). However, note that AMD provides similar profilers and that the advices that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! </p>
-<p>I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>cool</strong>. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
+<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! </p>
+<p>I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>important</strong>. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
 <p>It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Moreover, I plan on adding to this blog post as I learn more.</p>
 <p>I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.</p>
 <h3 id="outline">Outline</h3>
-<p>The outline for this blog post is the following four rules of thumbs,or advices, largely inspired by <a href="https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
+<p>The outline for this blog post is the following four rules of thumbs,or advice, largely inspired by <a href="https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
 <ol>
 <li><a href="#1-minimize-redundant-global-memory-accesses">Minimize redundant global memory accesses</a></li>
 <li><a href="#2-avoid-the-use-of-local-memory">Avoid the use of <em>Local memory</em></a></li>
@@ -283,7 +284,7 @@
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
 <p><strong>Note:</strong> I do not mention the topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.</p>
 <h3 id="before-we-start">Before we start</h3>
-<p>Before going into the four advices, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advices 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
+<p>Before going into the four advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
 <p>All sample code and <code>ncu</code> reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were generated with my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
 <h4 id="refresher-software-hardware-concepts-in-cuda">Refresher: software / hardware concepts in CUDA</h4>
 <p><img alt="alt text" src="../image-14.png" />
@@ -653,7 +654,7 @@ ptxas info    : Used 24 registers, used 0 barriers, 512 bytes cmem[0]
 </ul>
 <p>As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in <code>ncu</code>. This is also the case for register spilling, as detailed in the next section.</p>
 <h3 id="avoid-register-spilling">Avoid register spilling</h3>
-<p>Register spilling happens when threads are requiring too much registers, so much so that it would hinders <em>occupancy</em> in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advices on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "<a href="#how-to-reduce-per-thread-register-usage">How to reduce per-thread register usage</a>" section as the advices will coincides. You can also play with <a href="https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds">launch_bounds</a> to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.</p>
+<p>Register spilling happens when threads are requiring too much registers, so much so that it would hinders <em>occupancy</em> in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "<a href="#how-to-reduce-per-thread-register-usage">How to reduce per-thread register usage</a>" section as the advice will coincides. You can also play with <a href="https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds">launch_bounds</a> to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.</p>
 <p><strong>Note:</strong> If register spilling was always bad, CUDA would not allow it. It might be useful sometimes but in my limited experience I could always get rid of it and get good performances.</p>
 <h4 id="profiler-diagnosis_3">Profiler diagnosis</h4>
 <p>Register spilling is detected the exact same way than stack usage. It can be detected at compile time, it appears as local memory transactions in the memory workload analysis and shows up in the source view too.</p>
