@@ -5,7 +5,7 @@ _Last updated: {{ git_revision_date_localized }}_.
 ## 0. Introduction
 ### Some context and motivations
 
-I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU ! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
+I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
 
 **The nature of the task of porting kernels to the GPU, especially when time is limited, often lead to small mistakes that can undermine performance.**
 
@@ -26,7 +26,7 @@ I will not go over what I consider to be *advanced* optimization advices that wo
 
 These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advices I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advices are general enough so that they should allow speedups on all cards from all vendors. Note that I will point out in when any of the *advanced* optimizations would be relevant throughout the blogpost.
 
-**Note:** The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel ! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list !):
+**Note:** The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list!):
 
 - [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
 - [kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
@@ -66,14 +66,14 @@ Although not necessary for getting through this blog post, I recommend you learn
         -  [APOD cycle](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/#assess-parallelize-optimize-deploy).
 - What is Kokkos, why you might want to use it and how to get started with it. Some resources:
     - [Talk](https://www.youtube.com/watch?v=y3HHBl4kV7g) by Christian Trott, Co-leader of the Kokkos core team (Sandia National Lab).
-    - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, but you can find a lot of resources online, also, join the slack !).
-    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes ! (see [the CExA project](https://cexa-project.org/)).
+    - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, but you can find a lot of resources online, also, join the slack!).
+    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes! (see [the CExA project](https://cexa-project.org/)).
 
 ### Disclaimers
 
-If you think I wrote something that is wrong, or misleading please let me know ! 
+If you think I wrote something that is wrong, or misleading please let me know! 
 
-I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advices that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself ! 
+I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advices that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! 
 
 I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **cool**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
@@ -116,10 +116,10 @@ The software is organized as follows:
 
 - Threads are uniquely defined sequences of operations defined by the CUDA kernels. They are dispatched on the GPU's SM.
 - Blocks of threads are groups of threads. Threads of a block may only reside on the same SM.
-- Global memory is visible by all threads. It may reside in DRAM, L2 or L1 (potentially very slow !).
+- Global memory is visible by all threads. It may reside in DRAM, L2 or L1 (potentially very slow!).
 - Shared memory is visible by all threads of a block, and managed by the developer. Resides in L1.
-- **Local memory** is private to a thread. It may reside in DRAM, L2 or L1 (potentially very slow !). Local memory includes both register spilling and stack usage. More on that in [section 2](#2-avoid-the-use-of-local-memory).
-- Registers are private to a thread and reside in the SM's register file (the fastest !). 
+- **Local memory** is private to a thread. It may reside in DRAM, L2 or L1 (potentially very slow!). Local memory includes both register spilling and stack usage. More on that in [section 2](#2-avoid-the-use-of-local-memory).
+- Registers are private to a thread and reside in the SM's register file (the fastest!). 
 
 ## 1. Minimize redundant global memory accesses
 
@@ -166,15 +166,15 @@ Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) {
 ```
 **Note**: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.
 
-With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree ! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. `std::vector` by `Kokkos::View` in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. [this one](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473).
+With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. `std::vector` by `Kokkos::View` in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. [this one](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473).
 #### Profiler diagnosis
-Let's look into the profiler report for the first sample code (Download it and load it in `ncu-ui` ! This works even if you do not have a Nvidia GPU), [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep). First, let's look at the GPU Speed Of Light (SOL) section:
+Let's look into the profiler report for the first sample code (Download it and load it in `ncu-ui`! This works even if you do not have a Nvidia GPU), [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep). First, let's look at the GPU Speed Of Light (SOL) section:
 ![alt text](image-1.png)
 **Figure 2:** GPU SOL section of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
 
-**Note:** According to the [`ncu` profiling guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html); *SOL is a High-level overview of the throughput for compute and memory resources of the GPU. For each unit, the throughput reports the achieved percentage of utilization with respect to the theoretical maximum*. It's a fancy marketing term, yes, but quite a clever one if you ask me. Essentially, it tells you how much of the physical material's capacities you are using, and quicky tells you if you are limited by compute, or memory. Ideally, you know you are doing a good job of using your GPU when you are using at least 80% of one pipeline, and that it is limited by either the DRAM bandwith, or the peak FLOPs capacity.
+**Note:** According to the [`ncu` profiling guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html); *SOL is a High-level overview of the throughput for compute and memory resources of the GPU. For each unit, the throughput reports the achieved percentage of utilization with respect to the theoretical maximum*. It's a fancy marketing term, yes, but quite a clever one if you ask me. Essentially, it tells you how much of the physical material's capacities you are using, and quicky tells you if you are limited by compute, or memory. Ideally, you know you are doing a good job of using your GPU when you are using at least 80% of at least one of the two pipeline, and that it is limited by either the DRAM bandwith, or the peak FLOPs capacity.
 
-We can see that both the memory and compute pipelines are heavily used. This begs the question, are we using them effectively ? Let's go to the memory workload analysis first and dissect some elements. 
+We can see that both the memory and compute pipelines are heavily used. This begs the question, are we using them effectively? Let's go to the memory workload analysis first and dissect some elements. 
 
 ![alt text](image-3.png)
 **Figure 3:** Memory workload analysis of [sample-1.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1.ncu-rep).
@@ -184,9 +184,9 @@ We can see that both the memory and compute pipelines are heavily used. This beg
 - Communications between DRAM (Device memory) and L2:
     - 1.07 GB reads, which corresponds to:
   $2^{27}(\text{size}) \times 2 (\text{A and B}) \times 4 (\text{bytes per float})=1.07\times 10^9$ bytes.
-   There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good !
+   There is half as much writes, corresponding to A being modified. Both A and B are loaded once into the L2 cache, and A is written back only once into DRAM Good!
 - Communications between L2 and L1:
-    - About as much reads into L1, a little more probably due to cache misses. But, an astounding 9.14 GB of data written from L1 to L2, due to cache invalidation ! This  is a great hint of redundant memory accesses; a big discrepancy between expected and observed volumes of exchanges between memories. Essentially, this is the cache that is working hard to save you from you own mistakes, by not writing back all the way to DRAM at each `A(i)+=`. It really is saving you, as if we switch to throughput view, we see that these excessive writes are done at an astounding 1.89 TB/s, twice as fast as my GPU's bandwidth !
+    - About as much reads into L1, a little more probably due to cache misses. But, an astounding 9.14 GB of data written from L1 to L2, due to cache invalidation! This  is a great hint of redundant memory accesses; a big discrepancy between expected and observed volumes of exchanges between memories. Essentially, this is the cache that is working hard to save you from you own mistakes, by not writing back all the way to DRAM at each `A(i)+=`. It really is saving you, as if we switch to throughput view, we see that these excessive writes are done at an astounding 1.89 TB/s, twice as fast as my GPU's bandwidth!
   
 Lastly, let's look at one of my favorite sections, the warp state statistics session, especially the warp states:
 ![alt text](image-7.png)
@@ -198,12 +198,12 @@ If you are not familiar with warps states, really consider looking at [the 1h30 
 - Eligible: available to be scheduled.
 - Selected: will issue an instruction on the next cycle.
   
-The warp states shows you the **reasons** why your warps have been stalled during the execution of your kernel, sorted by importance. This is precisely what you should worry about ! We see two reasons here with quite obscure names *Stall long scoreboard* and *Stall LG throttle*. You can drag over your mouse onto the items to get an explanation, e.g. for the first one:
+The warp states shows you the **reasons** why your warps have been stalled during the execution of your kernel, sorted by importance. This is precisely what you should worry about! We see two reasons here with quite obscure names *Stall long scoreboard* and *Stall LG throttle*. You can drag over your mouse onto the items to get an explanation, e.g. for the first one:
 ![alt text](image-6 (1).jpg)
 
 **Figure 5:** Metric information for Stall long scoreboard.
 
-Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. *Stall LG throttle* means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations ! If you still observe that *Stall LG throttle* is limiting your performance even after removing all redundant memory operations, consider using [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) to pull more floating point numbers per request.
+Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. *Stall LG throttle* means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations! If you still observe that *Stall LG throttle* is limiting your performance even after removing all redundant memory operations, consider using [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) to pull more floating point numbers per request.
 
 Let's now look at the Compute workload analysis since Figure 2 shows us that the compute pipeline is heavily used. This can be surprising at first considering that our kernel is not compute intensive.
 
@@ -212,7 +212,7 @@ Let's now look at the Compute workload analysis since Figure 2 shows us that the
 
 As expected, the FMA pipe is strongly unutilized, and does not cause the heavy usage of the compute pipeline. Instead, the reason for this is that we almost reach the peak usage of the LSU pipe. If you drag your mouse to LSU, you will see that it refers to Load Store Unit. The LSU pipeline issues load, store, atomic, and reduction instructions to the L1TEX unit for global, local, and shared memory. Essentially, each time we load a value from global memory that resides in L1, the LSU pipe is used. We can expect that redundant thread-level global memory access hits in L1 most of the time. Therefore, this is yet another good symptom to look for.
 
-Let's now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep). I recommend using the *"add baseline"* functionality, so that we can track our progress ! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup ! Then, going into the several sections:
+Let's now take a look at [sample-1-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-1-fixed.ncu-rep). I recommend using the *"add baseline"* functionality, so that we can track our progress! First thing you can notice is that we get a huge performance gain: from 5.08ms to 1.81ms, a 64% speedup! Then, going into the several sections:
 
 - GPU Speed of light throughput:
     - The compute pipeline is less busy, as the fixed kernel issues much less instructions to the `LSU` pipe.
@@ -300,17 +300,17 @@ if (dim==1){
 } else if (dim==3){
     apply_kernel<3>(A, B, size);
 } else{
-   // Need more instantiations ! Fail or warning 
+   // Need more instantiations! Fail or warning 
 }
 ```
 
 
 I will not go through the `ncu` reports for this second example as the behavior is really similar to sample-1, but feel free to look a them yourself. The speedup obtained is 75% which is not surpising, since I pick the examples.
 
-**Warning:** Note that when using static arrays as temporary storage, you might accidentally trigger *Local memory* usage as it may resides in the *stack* or cause *register spilling*. Please refer to [section 2](#2-avoid-the-use-of-local-memory) to avoid this !
+**Warning:** Note that when using static arrays as temporary storage, you might accidentally trigger *Local memory* usage as it may resides in the *stack* or cause *register spilling*. Please refer to [section 2](#2-avoid-the-use-of-local-memory) to avoid this!
 
 ### Minimize block-level redundant memory accesses: shared memory
-If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant **block-level** memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime !). To use shared memory in Kokkos, look at [Hierarchical Parallelism](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html). As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.
+If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant **block-level** memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime!). To use shared memory in Kokkos, look at [Hierarchical Parallelism](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html). As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.
 
 ### Minimize redundant kernel-level memory accesses: coalescing
 
@@ -414,9 +414,9 @@ Stack usage arises when using static arrays for temporary storage to reduce redu
 ```c++
 // Within a GPU kernel, thread id is i
 double tmp[3]
-tmp[2] = ... //OK ! resolvable at compile time
+tmp[2] = ... //OK! resolvable at compile time
 int index = view_with_indexes_in_it(i) 
-tmp[index] = .. //Not OK ! Compiler cannot resolve this. It cannot compute the value of index. 
+tmp[index] = .. //Not OK! Compiler cannot resolve this. It cannot compute the value of index. 
 //tmp has to reside in local memory from the start
 ```
 The fix is quite disappointing in my opinion, but necessary. If you are sure that values from `view_with_indexes_in_it(i)` are in $[0,2]$, then, you can apply a switch, i.e. replace the last line by:
@@ -473,7 +473,7 @@ Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) {
         for (int k = 0; k < 10; k++){
             for (int dir = 0; dir < dim; dir++){
                 for (int dir2 = 0; dir2 < dim; dir2++){
-                    Atmp[indir[dir]] += Btmp[dir2]; //Not OK ! Compiler cannot resolve this. 
+                    Atmp[indir[dir]] += Btmp[dir2]; //Not OK! Compiler cannot resolve this. 
                     // It cannot predict the value of indir[dir]. 
                     // tmp now resides in local memory
                 }
@@ -516,7 +516,7 @@ Now, comparing the `ncu` reports [sample-4.ncu-rep](https://github.com/rbourgeoi
 - The fixed version is 32% faster (6.98ms vs 10.37 ms).
 - Both compute and memory pipelines are used much more effectively in the fixed version (see SOL section).
 - The warps are much less stalled for *"Stall Long Scoreboard"* i.e. on local memory dependency in this case.
-- The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100% !
+- The memory workload analysis allows to track local memory usage. For the fixed version, it's 0, -100%!
 ![alt text](image-17.png)
 
 **Figure 11:** Memory workload analysis for sample-4-fixed.ncu-rep, with sample-4.ncu-rep as a baseline. Zoom on Kernel <-> L1 interactions.
@@ -582,7 +582,7 @@ In general, more occupancy is better and you should try to maximize it. But do n
 - `I1-I17`, 17 instructions that take each one cycle to complete (finishes at `C2-C18`), and,
 - the last instruction `I18`, issued at `C18` requiring the result of all of them.
   
-The SM would issue an instruction per clock cycle, not one cycle would be wasted and only one warp would suffice. That means you can get good hardware usage even at low occupancy. More so than occupancy, this should be your metric: **Tune occupancy to maximize your hardware's usage**. The best occupancy is the one that leads to the biggest global memory throughput / best achieved Flops. So, open up `ncu`, refer to the SOL section, and experiment !
+The SM would issue an instruction per clock cycle, not one cycle would be wasted and only one warp would suffice. That means you can get good hardware usage even at low occupancy. More so than occupancy, this should be your metric: **Tune occupancy to maximize your hardware's usage**. The best occupancy is the one that leads to the biggest global memory throughput / best achieved Flops. So, open up `ncu`, refer to the SOL section, and experiment!
 
 ### Profiler diagnosis
 Let's look at  [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep) that shows an horrendous occupancy (we will understand why and how to fix it later). The issue is striking in the SOL section:
@@ -595,7 +595,7 @@ Even though the there are a lot of threads, the hardware is barely used, and it 
 
 **Figure 15:** Occupancy section of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
 
-The achieved occupancy is only of 12% ! This is extremely low, and `ncu` predicts that we could get a 66% speedup by improving it. We will see that this prediction is accurate in the "[Template away heavy branches](#template-away-heavy-branches)" section. It also indicates that the limiting factor is the register usage. Indeed, let's look at the occupancy graphs:
+The achieved occupancy is only of 12%! This is extremely low, and `ncu` predicts that we could get a 66% speedup by improving it. We will see that this prediction is accurate in the "[Template away heavy branches](#template-away-heavy-branches)" section. It also indicates that the limiting factor is the register usage. Indeed, let's look at the occupancy graphs:
 
 ![alt text](image-22.png)
 **Figure 16:** Occupancy graphs of [sample-7.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.ncu-rep).
@@ -604,8 +604,8 @@ They provide a very accurate prediction of how would the occupancy of your kerne
 We can see that we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move the register usage to the left, we can expect significant progress. Now, let's see how to do this.
 
 ### How to reduce per-thread register usage
-#### Re-order operations ?
-In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering. When you “manually” reorder source-level operations, most of the time `nvcc` will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of [direct acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong ! Instead, to get real gains the only options is to really change the operations you are doing.
+#### Re-order operations?
+In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering. When you “manually” reorder source-level operations, most of the time `nvcc` will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of [direct acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.
 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
 I really love `Kokkos`, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
@@ -660,7 +660,7 @@ we see `ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]`. 
 
 **Figure 17:** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.ncu-rep)
 
-The block size picked by the `Kokkos::MDRangePolicy` is 32, which is very a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size !
+The block size picked by the `Kokkos::MDRangePolicy` is 32, which is very a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!
 
 **Note:** The choice of the block size can be tuned in Kokkos, I was simply pointing out that the default choice can be bad. However, I do not think there is a way to fix the extra register usage.
 
@@ -761,7 +761,7 @@ The main stall reason we observe is *“Stall Short Scoreboard”*. The metric d
 If applicable, you should consider using [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/) that have a much larger throughput than standart FMA pipes. Now, let's look at a few basic, easy to avoid compute mistakes.
 ### A few basic compute mistakes
 - Use `FMA` instead of `+, *`:
-    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them ! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. 
+    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. 
 - Avoid `/`:
     - Divisions are expensive, and probably rely on some kind of iterative process, requiring several `FMA`'s. Try refactoring your math to minimize them, and if you spot that your kernel involves several divisions by the same number, compute the inverse once `double inverse = 1.0/number`, and multiply by `inverse` instead.
 - Do not accidentally use doubles:
@@ -781,7 +781,7 @@ The SIMD pattern, masking templating --->
 
 ## Final advice
 
-Participate to [hackathons](https://www.openhackathons.org/s/) ! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the [CINES website](https://www.cines.fr/) for AMD hackathons, and the [Idris website](http://www.idris.fr/) for Nvidia hackathons.
+Participate to [hackathons](https://www.openhackathons.org/s/)! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the [CINES website](https://www.cines.fr/) for AMD hackathons, and the [Idris website](http://www.idris.fr/) for Nvidia hackathons.
 
 
 ## Special thanks
