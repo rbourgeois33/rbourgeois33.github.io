@@ -206,7 +206,7 @@
 <li>A 20-50% speedup on a CFD <a href="https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192">diffusion kernel</a> from TRUST (obtained on RTX A6000 Ada and H100 GPUs).</li>
 <li>A 20% speedup on a <a href="https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54">MUSCL reconstruction kernel</a> from the radiative hydrodynamics code <a href="https://github.com/Maison-de-la-Simulation/heraclespp">heraclescpp</a> (obtained on a A100 GPU).</li>
 </ul>
-<p>I will not go over what I consider to be <em>advanced</em> optimization advice that would get you <em>optimal</em> performances, such as the use of </p>
+<p>I will not go over what I consider to be <em>advanced</em> optimization advice that could get you <em>optimal</em> performances, such as the use of </p>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>, </li>
 <li><a href="https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized memory access</a>,</li>
@@ -218,9 +218,9 @@
 <ul>
 <li><a href="https://docs.Nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
 <li><a href="https://github.com/nvidia/cccl">CUDA Core Compute Libraries</a>.</li>
-<li><a href="https://github.com/kokkos/kokkos-kernels">kokkos kernels</a> for portable BLAS, sparse BLAS and graph kernels.</li>
+<li><a href="https://github.com/kokkos/kokkos-kernels">Kokkos kernels</a> for portable BLAS, sparse BLAS and graph kernels.</li>
 <li><a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.</li>
-<li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs)</li>
+<li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs).</li>
 </ul>
 <p>Lastly, if you are in the process of optimizing/porting your code, and first learning about the GPU, you might want to start with the <a href="https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/">CUDA C++ Best Practices Guide</a> as kernel-level optimization is too low level to start with. The right approach is to identify the hot spots of your code and focus on them first (Assess, Parallelize, Optimize, Deploy cycle).</p>
 <h3 id="prerequisites">Prerequisites</h3>
@@ -712,7 +712,7 @@ We can see that we can barely improve the occupancy by changing the block size /
 <h4 id="re-order-operations">Re-order operations?</h4>
 <p>In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than <code>nvcc</code> in my reordering. When you “manually” reorder source-level operations, most of the time <code>nvcc</code> will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">direct acyclic graph</a> from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.</p>
 <h4 id="kokkos-specific-do-not-use-kokkosmdrangepolicy">[Kokkos specific] Do not use <code>Kokkos::MDRangePolicy</code></h4>
-<p>I really love <code>Kokkos</code>, so I hate to write this but, as of now (September 2025), <code>Kokkos::MDRangePolicy</code> has a few issues that obliges me to advise you not to use it, namely:</p>
+<p>I really love Kokkos, so I hate to write this but, as of now (September 2025), <code>Kokkos::MDRangePolicy</code> has a few issues that obliges me to advise you not to use it, namely:</p>
 <ul>
 <li>excessive register usage, probably due to the internal tiling algorithm,</li>
 <li>very questionable default block size choice.</li>
