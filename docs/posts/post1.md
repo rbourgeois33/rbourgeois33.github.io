@@ -1,4 +1,6 @@
 # Four basic performance advice for porting kernels to the GPU.
+If you find this article useful, leave a thumbs up or a comment [below](#comments) !
+
 _Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
 
@@ -91,9 +93,9 @@ The outline for this blog post is the following four rules of thumbs,or advice, 
 3. [Understand and improve occupancy](#3-understand-and-improve-occupancy)
 4. [Avoid basic compute mistakes](#4-avoid-basic-compute-mistakes)
 
-Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections.
+**Note:** I do not mention the important topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.
 
-**Note:** I do not mention the topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.
+Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections.
 
 ### Before we start
 
@@ -551,8 +553,8 @@ Let's start by a short refresher on occupancy. But for the n-th time, consider l
 As a result, in order to improve occupancy, you may consider:
 
 - reducing per-thread register usage,
-- tuning your launch configuration,
-- reduce shared memory usage.
+- reduce shared memory usage,
+- tuning your launch configuration.
   
 I will only cover the first item in depth, as my experience with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) is limited, and I decided not to talk too much about shared memory in this blog. I still briefly mention it in the "[Do not use `Kokkos::MDRangePolicy`](#kokkos-specific-do-not-use-kokkosmdrangepolicy)" section.
 

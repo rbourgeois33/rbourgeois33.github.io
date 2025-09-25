@@ -1,4 +1,6 @@
 # The cost of communications
+If you find this article useful, leave a thumbs up or a comment [below](#comments) !
+
 _Last updated: {{ git_revision_date_localized }}_.  
 ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost2%2F&label=Visits)
 
@@ -94,7 +96,7 @@ I insist on using the terminology *"properties of the **runtime (of an implement
 - Performance of an algorithm can vary dramatically between a naive and a smart implementation.
 - Performance of an implementation can vary dramatically between a "release" build and a "debug" build, and between machines of different quality.
 
-A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of $f$ and $m$ that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code, and you can  control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me. Most research papers talk about $f$ and $m$ as properties of the algorithm. This makes sense and is a useful approximation, but does implicitly assume that the algorithm is perfectly implemented. In reality, you have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. 
+A big chunk of the implementation work is to force the compile-runtime pipeline to deliver the values of $f$ and $m$ that you desire. In this sense, I find CPU optimization is harder than GPU optimization because the gap between the implementation and the runtime is wider. In GPU programming, you are writing native SIMD code (see [this cool Kokkos article about SIMD](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/SIMD.html)), and you can  control the L1 cache via `shared` memory. For CPU programming, you cannot control the cache, and using SIMD instructions is a pain. Also, the Nvidia profilers are just fantastic. But this could be (and probably is) an exposition bias from me. Most research papers talk about $f$ and $m$ as properties of the algorithm. This makes sense and is a useful approximation, but does implicitly assume that the algorithm is perfectly implemented. In reality, you have to write code and hope that the compiler/runtime does a good job of doing what you want it to do. 
 
 Let's consider the example of a very well-studied operation: the $n\times n$, **dense matrix multiplication**, `C+=A.B` (1st homework of [CS267](https://sites.google.com/lbl.gov/cs267-spr2022) and topic of the 2nd and 3rd lectures). 
 
