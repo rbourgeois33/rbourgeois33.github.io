@@ -192,7 +192,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="four-basic-performance-advice-for-porting-kernels-to-the-gpu">Four basic performance advice for porting kernels to the GPU.</h1>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 15, 2025 12:09:08 UTC"><span class="timeago" datetime="2025-09-15T12:09:08+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 15, 2025 12:09:08 UTC">2025-09-15</span></em>.<br />
+<p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 25, 2025 08:20:05 UTC"><span class="timeago" datetime="2025-09-25T08:20:05+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 25, 2025 08:20:05 UTC">2025-09-25</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -281,8 +282,8 @@
 <li><a href="#3-understand-and-improve-occupancy">Understand and improve occupancy</a></li>
 <li><a href="#4-avoid-basic-compute-mistakes">Avoid basic compute mistakes</a></li>
 </ol>
+<p><strong>Note:</strong> I do not mention the important topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.</p>
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
-<p><strong>Note:</strong> I do not mention the topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.</p>
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the four advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
 <p>All sample code and <code>ncu</code> reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were generated with my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
@@ -670,8 +671,8 @@ ptxas info    : Used 24 registers, used 0 barriers, 512 bytes cmem[0]
 <p>As a result, in order to improve occupancy, you may consider:</p>
 <ul>
 <li>reducing per-thread register usage,</li>
-<li>tuning your launch configuration,</li>
-<li>reduce shared memory usage.</li>
+<li>reduce shared memory usage,</li>
+<li>tuning your launch configuration.</li>
 </ul>
 <p>I will only cover the first item in depth, as my experience with <a href="https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds">launch_bounds</a> is limited, and I decided not to talk too much about shared memory in this blog. I still briefly mention it in the "<a href="#kokkos-specific-do-not-use-kokkosmdrangepolicy">Do not use <code>Kokkos::MDRangePolicy</code></a>" section.</p>
 <h4 id="why-improving-occupancy-latency-hiding">Why improving occupancy: latency hiding</h4>
