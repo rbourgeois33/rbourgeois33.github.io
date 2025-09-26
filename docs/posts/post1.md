@@ -19,7 +19,7 @@ By applying them, I was able to get the following speedups that are measured rel
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
-I will not go over what I consider to be *advanced* optimization advice that would get you *optimal* performances, such as the use of 
+I will not go over what I consider to be *advanced* optimization advice that could get you *optimal* performances, such as the use of 
 
 - [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s), 
 - [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
@@ -32,9 +32,9 @@ These topics are not especially difficult or out of reach, but only that they re
 
 - [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
 - [CUDA Core Compute Libraries](https://github.com/nvidia/cccl).
-- [kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
+- [Kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
 - [Trilinos](https://trilinos.github.io/) for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.
-- [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs)
+- [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs).
 
 Lastly, if you are in the process of optimizing/porting your code, and first learning about the GPU, you might want to start with the [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/) as kernel-level optimization is too low level to start with. The right approach is to identify the hot spots of your code and focus on them first (Assess, Parallelize, Optimize, Deploy cycle).
 
@@ -54,6 +54,7 @@ In this tutorial, I will assume that you are already familiar with:
         - [1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/),
         - [13 lectures by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj),
         - [Achieved occupancy](https://docs.Nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.html),
+        - [How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/),
         - [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/),
         - [Nsight compute documentation](https://docs.nvidia.com/nsight-compute/index.html).
 
@@ -611,7 +612,7 @@ We can see that we can barely improve the occupancy by changing the block size /
 In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering. When you “manually” reorder source-level operations, most of the time `nvcc` will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of [direct acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.
 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
-I really love `Kokkos`, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
+I really love Kokkos, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
 
 - excessive register usage, probably due to the internal tiling algorithm,
 - very questionable default block size choice.
@@ -747,7 +748,7 @@ For this section, I provide a [`ncu` report](https://github.com/rbourgeois33/rbo
 ![alt text](image-24.png)
 **Figure 18:** GPU SOL section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
-We can see that the kernel is mostly compute bound, and the profiler mentions: *The ratio of peak float (fp32) to double (fp64) performance on this device is 64:1. The workload achieved 0% of this device's fp32 peak performance and 61% of its fp64 peak performance. If Compute Workload Analysis determines that this workload is fp64 bound, consider using 32-bit precision floating point operations to improve its performance.* The latter point was explored by our intern [Dyhia Elhaddad](https://www.linkedin.com/in/dyhia-elhaddad-912318233/), leading to a X% (WIP) speedup. Refer to [my blog post on verrou (WIP)](post3.md) for more details. In this blog post, I will not talk about the use of reduced precision. Let's look at the compute section of the `ncu` report:
+We can see that the kernel is mostly compute bound, and the profiler mentions: *The ratio of peak float (fp32) to double (fp64) performance on this device is 64:1. The workload achieved 0% of this device's fp32 peak performance and 61% of its fp64 peak performance. If Compute Workload Analysis determines that this workload is fp64 bound, consider using 32-bit precision floating point operations to improve its performance.* <!---The latter point was explored by our intern [Dyhia Elhaddad](https://www.linkedin.com/in/dyhia-elhaddad-912318233/), leading to a X% (WIP) speedup. Refer to [my blog post on verrou (WIP)](post3.md) for more details.---> In this blog post, I will not talk about the use of reduced precision. Let's look at the compute section of the `ncu` report:
 
 ![alt text](image-25.png)
 **Figure 19:** Compute workload analysis section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
