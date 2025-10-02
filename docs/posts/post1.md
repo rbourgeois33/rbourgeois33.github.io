@@ -765,7 +765,7 @@ The main stall reason we observe is *“Stall Short Scoreboard”*. The metric d
 If applicable, you should consider using [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/) that have a much larger throughput than standart FMA pipes. Now, let's look at a few basic, easy to avoid compute mistakes.
 ### A few basic compute mistakes
 - Use `FMA` instead of `+, *`:
-    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. 
+    - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. **Warning** This may lead to different results in floating point arithmetic; doing a `+` and a `-` is not bitwise equivalent to a `FMA`.
 - Avoid `/`:
     - Divisions are expensive, and probably rely on some kind of iterative process, requiring several `FMA`'s. Try refactoring your math to minimize them, and if you spot that your kernel involves several divisions by the same number, compute the inverse once `double inverse = 1.0/number`, and multiply by `inverse` instead.
 - Do not accidentally use doubles:
