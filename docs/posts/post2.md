@@ -29,7 +29,7 @@ The graph stops around 2015, where the ratio of gamma to beta (RAM) was around 1
 | [AMD MI250x](https://www.techpowerup.com/gpu-specs/radeon-instinct-mi250x.c3837)  |           2021 |                   47.85 |         3.28     |           ~116   |
 | [Nvidia H100](https://www.techpowerup.com/gpu-specs/h100-pcie-80-gb.c3899)  |           2022 |                  25.61   |         2.04 |          ~ 100       |
 | [AMD MI300A](https://www.techpowerup.com/gpu-specs/radeon-instinct-mi300a.c4296)  |           2023 |                   81.72 |         10.3     |           ~63   |
-| [Nvidia B200](https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210)  |           2024 |                  62   |         8.20      |           ~60       |   
+| [Nvidia B100](https://www.techpowerup.com/gpu-specs/b200-sxm-192-gb.c4210)  |           2024 |                  62   |         8.20      |           ~60       |   
 
 **Table 1:** Evolution of the BW, FP64 flops and FPL for recent GPUs. FPL is computed as $\frac{FP64 \ Flops}{BW}*8$ since a FP64 number is made of 8 bytes.
 
