@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
       
       float x = ((float) i)*dx;
 
-      if ( i<size/2 ){
+      if ( i%64 < 32 ){
         lsum += x ;
       }else{
         lsum += Kokkos::cosh(x);
