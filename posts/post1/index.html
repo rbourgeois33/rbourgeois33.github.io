@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Four basic performance advice for porting kernels to the GPU - Rémi Bourgeois's blog</title>
+    <title>Five basic performance advice for porting kernels to the GPU - Rémi Bourgeois's blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Four basic performance advice for porting kernels to the GPU";
+        var mkdocs_page_name = "Five basic performance advice for porting kernels to the GPU";
         var mkdocs_page_input_path = "posts/post1.md";
         var mkdocs_page_url = null;
       </script>
@@ -50,7 +50,7 @@
               </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Four basic performance advice for porting kernels to the GPU</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Five basic performance advice for porting kernels to the GPU</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#0-introduction">0. Introduction</a>
         <ul>
@@ -150,6 +150,12 @@
     </li>
         </ul>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-avoid-intra-warp-thread-divergence">5. Avoid intra-warp thread divergence</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#profiler-diagnosis_6">Profiler diagnosis</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#final-advice">Final advice</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
@@ -182,7 +188,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Posts</li>
-      <li class="breadcrumb-item active">Four basic performance advice for porting kernels to the GPU</li>
+      <li class="breadcrumb-item active">Five basic performance advice for porting kernels to the GPU</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -191,9 +197,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="four-basic-performance-advice-for-porting-kernels-to-the-gpu">Four basic performance advice for porting kernels to the GPU.</h1>
+                <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 2, 2025 08:16:51 UTC"><span class="timeago" datetime="2025-10-02T08:16:51+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 2, 2025 08:16:51 UTC">2025-10-02</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 13, 2025 13:00:53 UTC"><span class="timeago" datetime="2025-10-13T13:00:53+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 13, 2025 13:00:53 UTC">2025-10-13</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -282,8 +288,8 @@
 <li><a href="#2-avoid-the-use-of-local-memory">Avoid the use of <em>Local memory</em></a></li>
 <li><a href="#3-understand-and-improve-occupancy">Understand and improve occupancy</a></li>
 <li><a href="#4-avoid-basic-compute-mistakes">Avoid basic compute mistakes</a></li>
+<li><a href="#5-avoid-intra-warp-thread-divergence">Avoid intra-warp thread divergence</a></li>
 </ol>
-<p><strong>Note:</strong> I do not mention the important topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.</p>
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the four advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
@@ -833,7 +839,7 @@ if (expensive_option){
 <p>Unsurprisingly, we can see that the most used pipeline is <code>FP64</code>(FP64 <code>FMA</code>), followed by <code>ALU</code>(bool manipulations, int32 operations except ADD and MUL), <code>FMA</code> (FP32 and int32 <code>ADD</code> and <code>MUL</code>) and <code>LSU</code> (Load/store operations to L1). The graph on the left shows the percentage of cycle during which the different pipeline were active, while the graph on right shows the achieved % of peak instructions executed. </p>
 <p>By itself, this section does not really tell that the compute is the bottleneck, only that the compute pipelines are very active. As suggested, we can look into the warp state statistics sections to identify the bottlenecks:</p>
 <p><img alt="alt text" src="../image-26.png" />
-Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>.</p>
+<strong>Figure 20:</strong> Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>.</p>
 <p>The main stall reason we observe is <em>“Stall Short Scoreboard”</em>. The metric description is somewhat unclear to me, but based on this <a href="https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex">Stack Overflow post</a>, it includes stalls caused by dependencies on FP64 on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”. </p>
 <p>If applicable, you should consider using <a href="https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a> that have a much larger throughput than standart FMA pipes. Now, let's look at a few basic, easy to avoid compute mistakes.</p>
 <h3 id="a-few-basic-compute-mistakes">A few basic compute mistakes</h3>
@@ -860,13 +866,32 @@ Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourg
 </ul>
 </li>
 </ul>
-<!---
-## 5. Avoid thread divergence
-### Background
-### Profiler diagnosis
-### Advices
-The SIMD pattern, masking templating --->
+<h2 id="5-avoid-intra-warp-thread-divergence">5. Avoid intra-warp thread divergence</h2>
+<p>As mentioned earlier, threads in Nvidia GPUs are packed into so-called <em>warps</em> of size 32 (64 for AMD GPUs !). The GPU is only able to issue warp-wide instructions. It is still possible to obtain single-thread granularity of instructions, but at a performance cost. Let's look at figure 21:</p>
+<p><img alt="alt text" src="../image-29.png" />
+<strong>Figure 21:</strong> Representation of intra-warp thread divergence, source: <a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">the 1h30 lecture by Athena Elfarou (Nvidia)</a>.</p>
+<p>A fictional 8-threads warp is represented and executes a mock piece of code which has two logical branches: blue and white. Threads 0, 1 and 3 want to execute the blue instructions, threads 2,4,5,6,7 want to execute the white instructions. Since the GPU can only issue warp-wide instructions, granularity is recovered by <em>"de-activating"</em> threads during cycles. For example, during the first represented cycle, threads 0,1,3 issue instruction 1 while the others are de-activated (they probably issue instruction 1 too since instructions are warp-level, but throw away the result). During the 2nd cycle, threads 0,1,3 are de-activated while the other issue instruction 4. This way, granularity is recovered but at the cost of extra clock cycles. Indeed, each thread has to wait on all instructions to be complete, including the ones of the execution path that it is not taking.</p>
+<p>As a result, you only have one thing to keep in mind to avoid this issue: <strong>Avoid intra-warp thread divergence</strong>. You don't have to worry about block-level thread divergence or anything else.</p>
+<h3 id="profiler-diagnosis_6">Profiler diagnosis</h3>
+<p>Let's look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.cpp">sample-8.cpp</a> where I perform a funky meaningless reduction into <code>reduce</code>:</p>
+<pre><code class="language-c++">Kokkos::parallel_reduce(&quot;Kernel&quot;, size, KOKKOS_LAMBDA(const int i, float&amp; lsum) { 
 
+    float x = ((float) i)*dx;
+
+    if ( i%32 &lt; 16 ){
+        lsum += x;
+    }else{
+        lsum += Kokkos::cosh(x);
+        lsum -= Kokkos::sinh(x);
+    }
+
+}, result);
+</code></pre>
+<p>I force the thread divergence with the condition <code>if ( i%32 &lt; 16 )</code>. The first half of each warp will perform the simple sum, while the second half will perform <code>cosh</code> and <code>sinh</code> evaluations. Let's open up <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.ncu-rep">sample-8.ncu-rep</a> and jump right into the warp state statistics section. It shows the following explicit warning:</p>
+<p><img alt="alt text" src="../image-30.png" />
+<strong>Figure 22:</strong> Thread divergence warning in the Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.ncu-rep">sample-8.ncu-rep</a>.</p>
+<p>In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.cpp">sample-8-fixed.cpp</a>, I removed the thread divergence by replacing the condition by <code>if ( i%64 &lt; 32 )</code>. As a result, even warps perform the simple sum, while odd warps will perform <code>cosh</code> and <code>sinh</code> evaluations, completely removing the intra-warp divergence. One can open <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.ncu-rep">sample-8-fixed.ncu-rep</a> and notice the -21% speedup.</p>
+<p><strong>Note:</strong> The operation of the base and the fixed versions differ. I chose these sample codes in order to show you where to look at in the profiler to spot this specific issue. In generality, if applicable, consider re-ordering you data / algorithm to avoid the need for intra-thread divergence.</p>
 <h2 id="final-advice">Final advice</h2>
 <p>Participate to <a href="https://www.openhackathons.org/s/">hackathons</a>! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the <a href="https://www.cines.fr/">CINES website</a> for AMD hackathons, and the <a href="http://www.idris.fr/">Idris website</a> for Nvidia hackathons.</p>
 <h2 id="special-thanks">Special thanks</h2>
