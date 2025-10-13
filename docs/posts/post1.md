@@ -1,4 +1,4 @@
-# Four basic performance advice for porting kernels to the GPU.
+# Five basic performance advice for porting kernels to the GPU.
 If you find this article useful, leave a thumbs up or a comment [below](#comments) !
 
 _Last updated: {{ git_revision_date_localized }}_.  
@@ -93,8 +93,7 @@ The outline for this blog post is the following four rules of thumbs,or advice, 
 2. [Avoid the use of *Local memory*](#2-avoid-the-use-of-local-memory)
 3. [Understand and improve occupancy](#3-understand-and-improve-occupancy)
 4. [Avoid basic compute mistakes](#4-avoid-basic-compute-mistakes)
-
-**Note:** I do not mention the important topic of avoiding thread divergence. This is due to my lack of experience on the subject as of today (September 2025). This might be added in the future as I learn more.
+5. [Avoid intra-warp thread divergence](#5-avoid-intra-warp-thread-divergence)
 
 Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections.
 
@@ -758,7 +757,7 @@ Unsurprisingly, we can see that the most used pipeline is `FP64`(FP64 `FMA`), fo
 By itself, this section does not really tell that the compute is the bottleneck, only that the compute pipelines are very active. As suggested, we can look into the warp state statistics sections to identify the bottlenecks:
 
 ![alt text](image-26.png)
-Warp State Statistics section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
+**Figure 20:** Warp State Statistics section of [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep).
 
 The main stall reason we observe is *“Stall Short Scoreboard”*. The metric description is somewhat unclear to me, but based on this [Stack Overflow post](https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex), it includes stalls caused by dependencies on FP64 on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”. 
 
@@ -776,12 +775,41 @@ If applicable, you should consider using [tensor cores operations](https://devel
         - a lot of `IMAD` in the instruction statistics section,
         - a lot of *"Stall Wait"* in the warp state statistics section.
   
-<!---
-## 5. Avoid thread divergence
-### Background
+## 5. Avoid intra-warp thread divergence
+As mentioned earlier, threads in Nvidia GPUs are packed into so-called *warps* of size 32 (64 for AMD GPUs !). The GPU is only able to issue warp-wide instructions. It is still possible to obtain single-thread granularity of instructions, but at a performance cost. Let's look at figure 21:
+
+![alt text](image-29.png)
+**Figure 21:** Representation of intra-warp thread divergence, source: [the 1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/).
+
+A fictional 8-threads warp is represented and executes a mock piece of code which has two logical branches: blue and white. Threads 0, 1 and 3 want to execute the blue instructions, threads 2,4,5,6,7 want to execute the white instructions. Since the GPU can only issue warp-wide instructions, granularity is recovered by *"de-activating"* threads during cycles. For example, during the first represented cycle, threads 0,1,3 issue instruction 1 while the others are de-activated (they probably issue instruction 1 too since instructions are warp-level, but throw away the result). During the 2nd cycle, threads 0,1,3 are de-activated while the other issue instruction 4. This way, granularity is recovered but at the cost of extra clock cycles. Indeed, each thread has to wait on all instructions to be complete, including the ones of the execution path that it is not taking.
+
+As a result, you only have one thing to keep in mind to avoid this issue: **Avoid intra-warp thread divergence**. You don't have to worry about block-level thread divergence or anything else.
+
 ### Profiler diagnosis
-### Advices
-The SIMD pattern, masking templating --->
+Let's look at [sample-8.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.cpp) where I perform a funky meaningless reduction into `reduce`:
+
+```c++
+Kokkos::parallel_reduce("Kernel", size, KOKKOS_LAMBDA(const int i, float& lsum) { 
+      
+    float x = ((float) i)*dx;
+
+    if ( i%32 < 16 ){
+        lsum += x;
+    }else{
+        lsum += Kokkos::cosh(x);
+        lsum -= Kokkos::sinh(x);
+    }
+
+}, result);
+```
+I force the thread divergence with the condition `if ( i%32 < 16 )`. The first half of each warp will perform the simple sum, while the second half will perform `cosh` and `sinh` evaluations. Let's open up [sample-8.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.ncu-rep) and jump right into the warp state statistics section. It shows the following explicit warning:
+
+![alt text](image-30.png)
+**Figure 22:** Thread divergence warning in the Warp State Statistics section of [sample-8.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.ncu-rep).
+
+In [sample-8-fixed.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.cpp), I removed the thread divergence by replacing the condition by `if ( i%64 < 32 )`. As a result, even warps perform the simple sum, while odd warps will perform `cosh` and `sinh` evaluations, completely removing the intra-warp divergence. One can open [sample-8-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.ncu-rep) and notice the -21% speedup.
+
+**Note:** The operation of the base and the fixed versions differ. I chose these sample codes in order to show you where to look at in the profiler to spot this specific issue. In generality, if applicable, consider re-ordering you data / algorithm to avoid the need for intra-thread divergence.
 
 ## Final advice
 
