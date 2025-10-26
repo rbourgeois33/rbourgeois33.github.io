@@ -11,24 +11,23 @@ I was hired by CEA to join the porting effort of the the legacy code [TRUST](htt
 
 **The nature of the task of porting kernels to the GPU, especially when time is limited, often leads to small mistakes that can undermine performance.**
 
-The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance.
-
-By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
+The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
 
 - A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
-I will not go over what I consider to be *advanced* optimization advice that could get you *optimal* performances, such as the use of 
+I will not go over what I consider to be *advanced* optimization techniques such as:
 
-- [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s), 
-- [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
-- [tensor cores operations](https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
-- [hardware-specific optimizations](https://www.Nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). 
+- [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s),
+- [vectorized memory access](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
+- [tensor core operations](https://developer.nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
+- [hardware-specific optimizations](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5),
+- [warp-level primitives](https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/).
 
-These topics are not especially difficult or out of reach, but only that they require a significant design effort to be used effectively in a production context such as a wide CFD code like TRUST. Moreover, they do not always apply. In contrast, I believe that the advice I will give to you in this blog post are easy enough so that you can apply them straightforwardly to most kernel while porting your code to the GPU in a time limited environment. If getting *optimal* performance is crucial to your application, consider learning more about the *advanced* items, but keep in mind that **performance often comes at the cost of portability**. The advice are general enough so that they should allow speedups on GPUs from all vendors. Note that I will point out in when any of the *advanced* optimizations would be relevant throughout the blogpost.
+Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.
 
-**Note:** The target audience are engineers / researchers that want to get started with GPU porting in a code that relies on custom, domain specific low-level kernel. But do not reinvent the wheel! i.e. do not rewrite kernels that have been implemented, highly optimized and distributed in libraries. Consider looking into (non exhaustive list!):
+If you aim for *optimal* performance, or if you are tackling complex kernels such as the [single-pass parallel prefix scan with decoupled look-back](https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf), you will need to dive into those *advanced* topics. But please do not reinvent the wheel ! Except for learning purposes, if a kernel or algorithm is already implemented, optimized, and distributed in a library, use it. Here is a non exhaustive sample:
 
 - [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
 - [CUDA Core Compute Libraries](https://github.com/nvidia/cccl).
@@ -38,7 +37,7 @@ These topics are not especially difficult or out of reach, but only that they re
 
 Lastly, if you are in the process of optimizing/porting your code, and first learning about the GPU, you might want to start with the [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/) as kernel-level optimization is too low level to start with. The right approach is to identify the hot spots of your code and focus on them first (Assess, Parallelize, Optimize, Deploy cycle).
 
-### Prerequisites
+### Prerequisites and recommandations
 
 In this tutorial, I will assume that you are already familiar with:
 
@@ -48,8 +47,8 @@ In this tutorial, I will assume that you are already familiar with:
     - the roof-line performance model,
     - what does compute bound / memory bound mean.
 - Basic GPU architecture, in particular:
-    - Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks and global memory. *You can be confused about what is local memory*. [refresher](#refresher-software-hardware-concepts-in-cuda).
-    - Some knowledge of occupancy. [refresher](#refresher-on-occupancy).
+    - Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks and global memory. *You can be confused about what is local memory*. [Refresher](#refresher-software-hardware-concepts-in-cuda).
+    - Some knowledge of occupancy. [Refresher](#refresher-on-occupancy).
     - Here are resources on GPU architecture / CUDA programming:
         - [1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/),
         - [13 lectures by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj),
