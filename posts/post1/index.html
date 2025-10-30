@@ -199,7 +199,7 @@
               
                 <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 26, 2025 18:04:41 UTC"><span class="timeago" datetime="2025-10-26T18:04:41+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 26, 2025 18:04:41 UTC">2025-10-26</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 30, 2025 17:02:09 UTC"><span class="timeago" datetime="2025-10-30T17:02:09+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 30, 2025 17:02:09 UTC">2025-10-30</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -719,6 +719,7 @@ We can see that we can barely improve the occupancy by changing the block size /
 <h4 id="re-order-operations">Re-order operations?</h4>
 <p>In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than <code>nvcc</code> in my reordering. When you “manually” reorder source-level operations, most of the time <code>nvcc</code> will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">direct acyclic graph</a> from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.</p>
 <h4 id="kokkos-specific-do-not-use-kokkosmdrangepolicy">[Kokkos specific] Do not use <code>Kokkos::MDRangePolicy</code></h4>
+<p><strong>Important Note:</strong> The issues of `Kokkos::MDRangePolicyn mentionned in this section have been noticed by <a href="https://cexa-project.org/">the CExA project</a> team and are currently being fixed. I look forward to removing this section.</p>
 <p>I really love Kokkos, so I hate to write this but, as of now (September 2025), <code>Kokkos::MDRangePolicy</code> has a few issues that obliges me to advise you not to use it, namely:</p>
 <ul>
 <li>excessive register usage, probably due to the internal tiling algorithm,</li>
