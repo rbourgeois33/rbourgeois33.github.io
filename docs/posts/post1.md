@@ -610,6 +610,9 @@ We can see that we can barely improve the occupancy by changing the block size /
 In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering. When you “manually” reorder source-level operations, most of the time `nvcc` will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of [direct acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.
 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
+
+**Important Note:** The issues of `Kokkos::MDRangePolicyn mentionned in this section have been noticed by [the CExA project](https://cexa-project.org/) team and are currently being fixed. I look forward to removing this section.
+
 I really love Kokkos, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
 
 - excessive register usage, probably due to the internal tiling algorithm,
