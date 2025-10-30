@@ -611,7 +611,7 @@ In my limited experience, I have found no success in re-ordering operations with
 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
 
-**Important Note:** The issues of `Kokkos::MDRangePolicyn mentionned in this section have been noticed by [the CExA project](https://cexa-project.org/) team and are currently being fixed. I look forward to removing this section.
+**Important Note:** The issues of `Kokkos::MDRangePolicy` mentionned in this section have been noticed by [the CExA project](https://cexa-project.org/) team and are currently being fixed. I look forward to removing this section.
 
 I really love Kokkos, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it, namely:
 
