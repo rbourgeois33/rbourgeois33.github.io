@@ -665,7 +665,7 @@ we see `ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]`. 
 
 **Figure 17:** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.ncu-rep)
 
-The block size picked by the `Kokkos::MDRangePolicy` is 32, which is very a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!
+The block size picked by the `Kokkos::MDRangePolicy` is 32, which is a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!
 
 **Note:** The choice of the block size can be tuned in Kokkos, I was simply pointing out that the default choice can be bad. However, I do not think there is a way to fix the extra register usage.
 
@@ -820,7 +820,9 @@ Participate to [hackathons](https://www.openhackathons.org/s/)! These are a fant
 
 ## Special thanks
 
-Thanks to Paul Gannay (CEA-MDLS) for providing feedback.
+Thanks to :
+- Paul Gannay (CEA-MDLS) for providing feedback.
+- Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the great course he gave at CEA & some typo fixing.
 
 ## Comments 
 <script src="https://giscus.app/client.js"
