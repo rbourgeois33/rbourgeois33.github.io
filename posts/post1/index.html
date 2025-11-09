@@ -281,7 +281,7 @@
 <p>It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Moreover, I plan on adding to this blog post as I learn more.</p>
 <p>I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.</p>
 <h3 id="outline">Outline</h3>
-<p>The outline for this blog post is the following four rules of thumbs,or advice, largely inspired by <a href="https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
+<p>The outline for this blog post is the following five rules of thumbs,or advice, largely inspired by <a href="https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
 <ol>
 <li><a href="#1-minimize-redundant-global-memory-accesses">Minimize redundant global memory accesses</a></li>
 <li><a href="#2-avoid-the-use-of-local-memory">Avoid the use of <em>Local memory</em></a></li>
@@ -291,7 +291,7 @@
 </ol>
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
 <h3 id="before-we-start">Before we start</h3>
-<p>Before going into the four advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
+<p>Before going into the five advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
 <p>All sample code and <code>ncu</code> reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were generated with my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
 <h4 id="refresher-software-hardware-concepts-in-cuda">Refresher: software / hardware concepts in CUDA</h4>
 <p><img alt="alt text" src="../image-14.png" />
@@ -840,7 +840,7 @@ if (expensive_option){
 <p>By itself, this section does not really tell that the compute is the bottleneck, only that the compute pipelines are very active. As suggested, we can look into the warp state statistics sections to identify the bottlenecks:</p>
 <p><img alt="alt text" src="../image-26.png" />
 <strong>Figure 20:</strong> Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>.</p>
-<p>The main stall reason we observe is <em>“Stall Short Scoreboard”</em>. The metric description is somewhat unclear to me, but based on this <a href="https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex">Stack Overflow post</a>, it includes stalls caused by dependencies on FP64 on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”. </p>
+<p>The main stall reason we observe is <em>“Stall Short Scoreboard”</em>. The metric description is somewhat unclear to me, but based on this <a href="https://stackoverflow.com/questions/66123750/what-are-the-long-and-short-scoreboards-w-r-t-mio-l1tex">Stack Overflow post</a>, it includes stalls caused by dependencies on FP64 math operations on GPUs that have a very small amount of FP64 CUDA cores compared to FP32. This is the case for my GPU. The culprit, therefore, is the FP64 operations. If the bottleneck were instead dependencies on FP32 operations, or on FP64 operations running on a “compute” GPU (e.g. one with an FP32-to-FP64 ratio of 1:2 such as the A100), then the primary stall reason would appear as “Stall Wait”. </p>
 <p>If applicable, you should consider using <a href="https://developer.Nvidia.com/blog/optimizing-gpu-performance-tensor-cores/">tensor cores operations</a> that have a much larger throughput than standart FMA pipes. Now, let's look at a few basic, easy to avoid compute mistakes.</p>
 <h3 id="a-few-basic-compute-mistakes">A few basic compute mistakes</h3>
 <ul>
