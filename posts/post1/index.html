@@ -199,7 +199,7 @@
               
                 <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="November 6, 2025 10:22:00 UTC"><span class="timeago" datetime="2025-11-06T10:22:00+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="November 6, 2025 10:22:00 UTC">2025-11-06</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="November 9, 2025 15:09:23 UTC"><span class="timeago" datetime="2025-11-09T15:09:23+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="November 9, 2025 15:09:23 UTC">2025-11-09</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -243,6 +243,7 @@
 <li>Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks and global memory. <em>You can be confused about what is local memory</em>. <a href="#refresher-software-hardware-concepts-in-cuda">Refresher</a>.</li>
 <li>Some knowledge of occupancy. <a href="#refresher-on-occupancy">Refresher</a>.</li>
 <li>Here are resources on GPU architecture / CUDA programming:<ul>
+<li><a href="https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ">Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)</a>,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou (Nvidia)</a>,</li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella (Nvidia)</a>,</li>
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/">How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)</a>,</li>
@@ -895,9 +896,11 @@ if (expensive_option){
 <h2 id="final-advice">Final advice</h2>
 <p>Participate to <a href="https://www.openhackathons.org/s/">hackathons</a>! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the <a href="https://www.cines.fr/">CINES website</a> for AMD hackathons, and the <a href="http://www.idris.fr/">Idris website</a> for Nvidia hackathons.</p>
 <h2 id="special-thanks">Special thanks</h2>
-<p>Thanks to :
-- Paul Gannay (CEA-MDLS) for providing feedback.
-- Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the great course he gave at CEA &amp; some typo fixing.</p>
+<p>Thanks to :</p>
+<ul>
+<li>Paul Gannay (CEA-MDLS) for providing feedback.</li>
+<li>Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the course he taught at CEA Saclay, plus some typo fixing.</li>
+</ul>
 <h2 id="comments">Comments</h2>
 <script src="https://giscus.app/client.js"
         data-repo="rbourgeois33/rbourgeois33.github.io"
