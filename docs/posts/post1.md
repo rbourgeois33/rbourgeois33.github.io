@@ -14,7 +14,7 @@ I was hired by CEA to join the porting effort of the the legacy code [TRUST](htt
 The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
 
 - A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
-- A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Diff_Dift/Op_Dift_VEF_Face_Gen.tpp#L192) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
+- A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/commit/7ac3ec98ba17a187e84c828c62b035ce66004885) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
 I will not go over what I consider to be *advanced* optimization techniques such as:
@@ -50,6 +50,7 @@ In this tutorial, I will assume that you are already familiar with:
     - Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks and global memory. *You can be confused about what is local memory*. [Refresher](#refresher-software-hardware-concepts-in-cuda).
     - Some knowledge of occupancy. [Refresher](#refresher-on-occupancy).
     - Here are resources on GPU architecture / CUDA programming:
+        - [Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)](https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ),
         - [1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/),
         - [13 lectures by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj),
         - [How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/),
@@ -820,8 +821,9 @@ Participate to [hackathons](https://www.openhackathons.org/s/)! These are a fant
 ## Special thanks
 
 Thanks to :
+
 - Paul Gannay (CEA-MDLS) for providing feedback.
-- Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the great course he gave at CEA & some typo fixing.
+- Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the course he taught at CEA Saclay, plus some typo fixing.
 
 ## Comments 
 <script src="https://giscus.app/client.js"
