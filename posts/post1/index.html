@@ -503,9 +503,11 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 <p>Let's look at two ways to practically apply this advice:</p>
 <ul>
 <li>Considering we are working with a 2D matrix of dimension <code>M</code>,<code>N</code>. If the operation is parallelized along the rows of the matrix (<code>threadIdx.x</code> ranging in <code>[0,M-1]</code>) <code>A</code> should be LayoutLeft (column-major). Alternatively, if the operation is parallelized along the columns of the matrix (<code>threadIdx.x</code> ranging in <code>[0,N-1]</code>) <code>A</code> should be LayoutRight (row-major).</li>
-<li>When seeing a memory access in your kernel e.g. <code>A(i,j)</code>, ask yourself: <em>which element is the next thread accessing?</em> </li>
+<li>When seeing a memory access in your kernel e.g. <code>A(i,j)</code>, ask yourself: <em>which element is the next thread accessing?</em> <ul>
 <li>Is it <code>A(i+1,j)</code>? If so, the operation is parallelized along the rows of the matrix (<code>threadIdx.x=i</code> ranging in <code>[0,M-1]</code>) <code>A</code> should be LayoutLeft (column-major). </li>
 <li>Is it <code>A(i,j+1)</code>? If so, the operation is parallelized along the columns of the matrix (<code>threadIdx.x=j</code> ranging in <code>[0,N-1]</code>) <code>A</code> should be LayoutRight (row-major).</li>
+</ul>
+</li>
 </ul>
 <p>Let's consider the operation of computing <code>row</code>, a vector of <code>N</code> elements defined as the sum of each row of <code>A</code>, by assigning each row to a thread. In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.cpp">sample-3.cpp</a>, we perform this operation on both a LayoutLeft and a LayoutRight Kokkos View:</p>
 <pre><code class="language-c++">int N = 10000; 
