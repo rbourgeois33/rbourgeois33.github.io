@@ -199,7 +199,7 @@
               
                 <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="November 29, 2025 10:09:39 UTC"><span class="timeago" datetime="2025-11-29T10:09:39+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="November 29, 2025 10:09:39 UTC">2025-11-29</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 1, 2025 12:50:37 UTC"><span class="timeago" datetime="2025-12-01T12:50:37+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 1, 2025 12:50:37 UTC">2025-12-01</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -496,14 +496,18 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 <p>We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of <code>ncu</code> is helpful to detect that precise issue and evaluate the efficiency of a solution.</p>
 <p>The <em>"Source Counter"</em> section also detects uncoalesced global memory accesses, for instance in <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep">compute-bound-kernel.ncu-rep</a>, we can read: <em>This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).</em></p>
 <h4 id="advices">Advices</h4>
-<p>These observations should make you want to think about your data layout. In particular, <strong>you should organize your data so that neighboring threads are working on neighboring data</strong>. This means that there is not one universal answer on which storage is better for a dense matrix, row-major or column-major. If you are doing matrix-vector product, sure, row-major is better as it will be more cache friendly and coalescing. If you do matrix-transpose-vector product, you want column-major. In the same way, there is no universal answer to the debate Array of Structure vs. Structure of Array. It all depends on what you will be doing with your data, how you will iterate over it. In other words, <strong>match your data layout with your iteration layout</strong>. You will hear people say things like <em>"LayoutLeft (column-major) is best on GPU, LayoutRight (row-major) is best on CPU"</em>. This is <strong>not</strong> a general truth.<!--- It might be the case for specific codes that work on arrays of specific size, for instance <code>A[M][N]</code> with <span class="arithmatex">\(M\gg N\)</span> and a specific type of operations on it. But this cannot be taught as a generality  ---> Let's look at an example:</p>
-<p>Consider a matrix <code>A</code> of size, <code>NxN</code> and the following two kernels:</p>
-<ol>
-<li>compute <code>col</code>, a vector of <code>N</code> elements defined as the sum of each columns of <code>A</code>, by assigning each column to a thread,</li>
-<li>compute <code>row</code>, a vector of <code>N</code> elements defined as the sum of each rows of <code>A</code>, by assigning each row to a thread.</li>
-</ol>
-<p><strong>Note:</strong> This is quite a bad way to parallelize this computation.</p>
-<p>For kernel 1, storing <code>A</code> as column-major is better. Each thread is accessing a column which is a coalesced memory segment. If one uses row-major storage, we can expect terrible performance. The opposite argument applies for kernel 2. It will be fast for LayoutRight storage, and slow for LayoutLeft. In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.cpp">sample-3.cpp</a>, we perform kernels 1 on both a LayoutLeft and a LayoutRight Kokkos View:</p>
+<p>These observations should make you want to think about layouts when dealing with data that is two-dimensional, or more. What layout should you choose? LayoutLeft (column-major) or LayoutRight (row-major)? The answer depends on how you parallelized your kernel. In particular,</p>
+<ul>
+<li><strong>You should organize your data so that neighboring threads (within a warp) are performing memory requests on coalescing data</strong>. This allows to reduce the amount of global memory requests, as seen above.</li>
+</ul>
+<p>Let's look at two ways to practically apply this advice:</p>
+<ul>
+<li>Considering we are working with a 2D matrix of dimension <code>M</code>,<code>N</code>. If the operation is parallelized along the rows of the matrix (<code>threadIdx.x</code> ranging in <code>[0,M-1]</code>) <code>A</code> should be LayoutLeft (column-major). Alternatively, if the operation is parallelized along the columns of the matrix (<code>threadIdx.x</code> ranging in <code>[0,N-1]</code>) <code>A</code> should be LayoutRight (row-major).</li>
+<li>When seeing a memory access in your kernel e.g. <code>A(i,j)</code>, ask yourself: <em>which element is the next thread accessing?</em> </li>
+<li>Is it <code>A(i+1,j)</code>? If so, the operation is parallelized along the rows of the matrix (<code>threadIdx.x=i</code> ranging in <code>[0,M-1]</code>) <code>A</code> should be LayoutLeft (column-major). </li>
+<li>Is it <code>A(i,j+1)</code>? If so, the operation is parallelized along the columns of the matrix (<code>threadIdx.x=j</code> ranging in <code>[0,N-1]</code>) <code>A</code> should be LayoutRight (row-major).</li>
+</ul>
+<p>Let's consider the operation of computing <code>row</code>, a vector of <code>N</code> elements defined as the sum of each row of <code>A</code>, by assigning each row to a thread. In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.cpp">sample-3.cpp</a>, we perform this operation on both a LayoutLeft and a LayoutRight Kokkos View:</p>
 <pre><code class="language-c++">int N = 10000; 
 Kokkos::View&lt;float**, Kokkos::LayoutLeft&gt;   A_LL(&quot;A_LL&quot;, N, N);      
 Kokkos::View&lt;float**, Kokkos::LayoutRight&gt;  A_LR(&quot;A_LR&quot;, N, N);       
@@ -515,7 +519,7 @@ Kokkos::parallel_for(&quot;RowSumLL&quot;, N, KOKKOS_LAMBDA(int i) {
     float sum = 0.0;
     for (int j = 0; j &lt; N; j++) {
         sum += A_LL(i,j);
-        }
+    }
     row_sum(i) = sum;
 });
 
@@ -527,14 +531,16 @@ Kokkos::parallel_for(&quot;RowSumLR&quot;, N, KOKKOS_LAMBDA(int i) {
     row_sum(i) = sum;
 });
 </code></pre>
-<p>The report can be found at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3-fixed">sample-3.ncu-rep</a> in which we can see that:</p>
+<p><strong>Note:</strong> This is quite a bad way to parallelize this computation, especially as <code>N</code> grows.</p>
+<p>In the first kernel, <code>"RowSumLL"</code>, the memory accesses are coalesced. Considering the <code>j</code>-th memory access of the <code>for</code> loop <code>A_LL(i,j)</code>, we can see that the next thread is accessing <code>A_LL(i+1,j)</code> which is coalescing since <code>A_LL</code> is LayoutLeft (column-major). In the second kernel, <code>"RowSumLR"</code>, the memory accesses are not coalesced. Considering the <code>j</code>-th memory access of the <code>for</code> loop <code>A_LR(i,j)</code>, we can see that the next thread is accessing <code>A_LR(i+1,j)</code> which is strided by <code>M</code> elements (not coalescing) since <code>A_LR</code> is LayoutRight (row-major).</p>
+<p>The report can be found at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.ncu-rep">sample-3.ncu-rep</a> in which we can see that:</p>
 <ul>
-<li><code>RowSumLR</code> runs in 0.52 ms,</li>
-<li><code>RowSumLL</code> runs in 1.14ms (+120%). The memory workload analysis section says: <em>"On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread"</em>. This is the worst case scenario with FP32 numbers, and it is caused by the huge stride between elements on the same line of <code>A_LL</code>. Moreover, the L1 cache is used a lot, whereas <code>RowSumLR</code> does not use it at all.</li>
+<li><code>RowSumLL</code> runs in 0.52 ms,</li>
+<li><code>RowSumLR</code> runs in 1.14 ms (+120%). The memory workload analysis section says: <em>"On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread"</em>. This is the worst case scenario with FP32 numbers, and it is caused by the huge stride between elements on the same line of <code>A_LR</code>. Moreover, the L1 cache is used a lot, whereas <code>RowSumLL</code> does not use it at all. The reason for the cache usage is clear: the <code>j</code>-th memory request <code>A_LR(i,j)</code> fetches a segment of memory into cache, that is hit during the <code>j+1</code>-th memory request <code>A_LR(i,j+1)</code>, performed by the same thread.</li>
 </ul>
-<p>As you see, the best layout depends on what <em>operation</em> you plan on doing on your data, and <em>how</em> you plan on doing it i.e. which algorithm and which implementation. Another example is matrix multiplication where the best layout is cache/register-fitting blocked layout, <em>because</em> the best algorithm is cache/register-fitting blocked matrix multiplication. However, if you were to implement the naive version of matrix multiply <code>C=AB</code> where, for each element of <code>C</code>, you load a row of <code>A</code> and a column of <code>B</code> and perform the dot product, the best layout is storing <code>A/B</code> in row/column-major order respectively. For simulations on unstructured meshes, I recommend using <a href="https://en.wikipedia.org/wiki/Z-order_curve">Z-order curve</a> re-ordering of the mesh-element. For our CFD code TRUST, this enabled an overall +20% speedup due to a better coalescing (congrats to <a href="https://www.linkedin.com/in/adrien-bruneton-7bb0ba94/">Adrien Bruneton</a>.</p>
 <p><strong>Note:</strong> A non-coalesced write of some data that is later re-loaded by the same thread is especially bad for performance, as it needs to invalidate caches. A single non-coalesced write can invalidate a sector in L1, and L2, requiring the data to be fetched potentially all the way from DRAM for the next load.</p>
-<p><strong>Note:</strong> The default layout for multidimensional views in Kokkos is LayoutLeft on device, and LayoutRight on host. I believe this is due to historical reasons; Algorithms from the Trilinos library that is built upon Kokkos runs more efficiently this way. But again, this is application-specific.</p>
+<p><strong>Note:</strong> On CPU (either during a serial execution, or via OpenMP/threads) the optimal data layout is opposite to the GPU one! Since there are typically much fewer CPU threads than parallelized elements, we want to favor caching instead of coalescing. For our example, each CPU thread will deal with several rows of the matrix and benefit from caching. The default layout for multidimensional views in Kokkos is LayoutLeft (column-major) on device, and LayoutRight (row-major) on host. I believe that this is due to historical reasons; algorithms from the Trilinos library that is built upon Kokkos are working on multi-dimensional views where the number of rows far exceeds the number of columns, and are therefore parallelized along rows. Refer to <a href="https://www.youtube.com/watch?v=O-asHTtO7O4&amp;t=4337s">this section of the 2nd module of the Kokkos lectures series</a> for more discussions on this topic.</p>
+<p>For simulations on unstructured meshes, I recommend using <a href="https://en.wikipedia.org/wiki/Z-order_curve">Z-order curve</a> re-ordering of the mesh elements. For our CFD code TRUST, this enabled an overall +20% speedup due to better coalescing (congrats to <a href="https://www.linkedin.com/in/adrien-bruneton-7bb0ba94/">Adrien Bruneton</a>).</p>
 <h2 id="2-avoid-the-use-of-local-memory">2. Avoid the use of local memory</h2>
 <h3 id="what-is-local-memory-how-to-detect-its-usage">What is local memory, how to detect it's usage.</h3>
 <p>As we saw in the introduction's refresher, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:</p>
