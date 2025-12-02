@@ -125,13 +125,13 @@ The software is organized as follows:
 
 ## 1. Minimize redundant global memory accesses
 
-On an Nvidia GPU, any request to global memory may end up fetching data from:
+On an Nvidia GPU, any global memory access may end up fetching data from:
 
 - The DRAM, visible by all threads,
 - the L2 cache, visible by all threads,
 - the L1 cache, visible by all threads of a block.
 
-As discussed in [my blog post on the cost of communications](post2.md), on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a `FMA` (fused multiply-add) math operation on that number. The cache hierarchy does mitigates that number. If the L1 cache hits, the memory request will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory *is* more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them *at all cost*.
+As discussed in [my blog post on the cost of communications](post2.md), on recent GPUs (V/A/H/B100) it takes 50-100x more time to load a non cached FP64 double from DRAM up to registers than computing a `FMA` (fused multiply-add) math operation on that number. The cache hierarchy does mitigates that number. If the L1 cache hits, the memory access will be much faster, with a FPL of "only" 5-10x. For the L2 cache, the factor is about 10-50x. But it remains that every access to global memory *is* more expensive than a register manipulation by a factor of at least 5-10x. Thus you should avoid them *at all cost*.
 
 ### 1. Minimize redundant thread-level global memory accesses
 
@@ -314,20 +314,22 @@ I will not go through the `ncu` reports for this second example as the behavior 
 ### Minimize block-level redundant memory accesses: shared memory
 If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant **block-level** memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime!). To use shared memory in Kokkos, look at [Hierarchical Parallelism](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html). As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.
 
-### Minimize redundant kernel-level memory accesses: coalescing
+### Minimize redundant kernel-level memory requests: coalescing accesses
+
+You may have noticed I've been using both terms "*memory accesses*" and "*memory requests*" throughout this post. Now that we've introduced enough concepts, let's clarify the distinction. A memory access is a statement in your GPU kernel that requests data from global memory. For example, `view(i,j)`. A memory request is what actually occurs at the hardware level. When accesses are coalesced, they translate into just a few requests (one per memory sector). When they're not coalesced, each access can trigger a separate request, significantly increasing memory traffic.
 
 #### Sectors and cache line
-When using Nvidia GPUs, threads are packed in so-called warps of 32 threads which execute instructions simultaneously (SIMD). In the same way, when a memory request if performed, (like load one FP64 number from global memory), it is not done for a single one, but in packs of so-called *sectors* of 32 bytes (i.e. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:
+When using Nvidia GPUs, threads are packed in so-called warps of 32 threads which execute instructions simultaneously (SIMT). In the same way, when a memory access if performed, (like load one FP64 number from global memory), it is not done for a single one, but in packs of so-called *sectors* of 32 bytes (i.e. 4 FP64 numbers). Another way to say this is that the memory access granularity of the GPU is of 32 bytes. As a result, the best case scenario for a warp load, is that it requires data that is coalescing:
 
 ![alt text](image-9.png)
 **Figure 8:** Coalesced memory accesses ([Source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/)). 
 
-In this ideal case, each thread is loading a FP64 number. There are 32 threads in a warps so this amount to 32 FP64 number, e.g. 256 bytes which is 8 sectors. This is very efficient because 256 bytes are loaded, and 256 bytes are used: the bandwidth of the GPU is fully used. Let's now look at the worst case scenario:
+In this ideal case, each thread is loading a FP64 number. There are 32 threads in a warps so this amount to 32 FP64 accesses, e.g. 256 bytes which is 8 sectors, i.e. 8 memory requests. This is very efficient because 256 bytes are loaded, and 256 bytes are used: the memory requests are fully used. Let's now look at the worst case scenario:
 
 ![alt text](image-10.png)
 **Figure 9:** strided memory accesses. Adapted from [source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). 
 
-In this case, each thread is still loading a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own", a whole sector is loaded for each. As a result 32 sectors = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the bandwidth is used, and the case gets worst if you are working with smaller a datatype.
+In this case, each thread is still accessing a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own", a whole sector is requested for each. As a result 32 sectors = 32 memory requests = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the requests is used, and the case gets worst if you are working with smaller datatypes.
 
 #### Profiler diagnosis
 
@@ -335,23 +337,21 @@ The ratio of bytes loaded to bytes used per memory request is actually shown in 
 ![alt text](image-12.png)
 **Figure 10:** DRAM global Load Access Pattern warning for `sample-1-fixed.cpp`.
 
-We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can be very bad. This section of `ncu` is helpful to detect that precise issue and evaluate the efficiency of a solution.
+We see that for each 32 bytes sector transmitted, "only" 28.4 are used. This is pretty good of course as this code is very simple. But for more complicated operations, such as numerical simulation on unstructured meshes, this can get a lot worse. The memory workload analysis section of `ncu` is helpful to detect that precise issue and evaluate the efficiency of a solution.
 
-The *"Source Counter"* section also detects uncoalesced global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*
+The *"Source Counter"* section also detects uncoalesced global memory accesses, for instance in [compute-bound-kernel.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/compute-bound-kernel.ncu-rep), we can read: *This kernel has uncoalesced global accesses resulting in a total of 434661683 excessive sectors (74% of the total 590018216 sectors).*  As you can see, the amount of sectors loaded could be reduced by 75%. This corresponds exactly to the 8 to 32 ratio observed on the figures above. **Coalescing memory accesses are fused together into requests, reducing the amount of work for the memory system and improving performances**.
 
-
-
-#### Advices
+#### Advices on data layout
 These observations should make you want to think about layouts when dealing with data that is two-dimensional, or more. What layout should you choose? LayoutLeft (column-major) or LayoutRight (row-major)? The answer depends on how you parallelized your kernel. In particular,
 
-- **You should organize your data so that neighboring threads (within a warp) are performing memory requests on coalescing data**. This allows to reduce the amount of global memory requests, as seen above.
+- **You should organize your data so that neighboring threads (within a warp) are performing memory accesses on coalescing data**. This allows to reduce the amount of global memory requests, as seen in the previous section.
 
 Let's look at two ways to practically apply this advice:
 
 - Considering we are working with a 2D matrix of dimension `M`,`N`. If the operation is parallelized along the rows of the matrix (`threadIdx.x` ranging in `[0,M-1]`) `A` should be LayoutLeft (column-major). Alternatively, if the operation is parallelized along the columns of the matrix (`threadIdx.x` ranging in `[0,N-1]`) `A` should be LayoutRight (row-major).
 - When seeing a memory access in your kernel e.g. `A(i,j)`, ask yourself: *which element is the next thread accessing?* 
-  - Is it `A(i+1,j)`? If so, the operation is parallelized along the rows of the matrix (`threadIdx.x=i` ranging in `[0,M-1]`) `A` should be LayoutLeft (column-major). 
-  - Is it `A(i,j+1)`? If so, the operation is parallelized along the columns of the matrix (`threadIdx.x=j` ranging in `[0,N-1]`) `A` should be LayoutRight (row-major).
+    - Is it `A(i+1,j)`? If so, the operation is parallelized along the rows of the matrix (`threadIdx.x=i` ranging in `[0,M-1]`) `A` should be LayoutLeft (column-major). 
+    - Is it `A(i,j+1)`? If so, the operation is parallelized along the columns of the matrix (`threadIdx.x=j` ranging in `[0,N-1]`) `A` should be LayoutRight (row-major).
 
 Let's consider the operation of computing `row`, a vector of `N` elements defined as the sum of each row of `A`, by assigning each row to a thread. In [sample-3.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.cpp), we perform this operation on both a LayoutLeft and a LayoutRight Kokkos View:
 
@@ -387,11 +387,11 @@ In the first kernel, `"RowSumLL"`, the memory accesses are coalesced. Considerin
 The report can be found at [sample-3.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-3.ncu-rep) in which we can see that:
 
 - `RowSumLL` runs in 0.52 ms,
-- `RowSumLR` runs in 1.14 ms (+120%). The memory workload analysis section says: *"On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread"*. This is the worst case scenario with FP32 numbers, and it is caused by the huge stride between elements on the same line of `A_LR`. Moreover, the L1 cache is used a lot, whereas `RowSumLL` does not use it at all. The reason for the cache usage is clear: the `j`-th memory request `A_LR(i,j)` fetches a segment of memory into cache, that is hit during the `j+1`-th memory request `A_LR(i,j+1)`, performed by the same thread.
+- `RowSumLR` runs in 1.14 ms (+120%). The memory workload analysis section says: *"On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread"*. This is the worst case scenario with FP32 numbers, and it is caused by the huge stride between elements on the same line of `A_LR`. Moreover, the L1 cache is used a lot, whereas `RowSumLL` does not use it at all. The reason for the cache usage is clear: the `j`-th memory access `A_LR(i,j)` fetches a segment of memory into cache, that is hit during the `j+1`-th memory access `A_LR(i,j+1)`, performed by the same thread.
 
 **Note:** A non-coalesced write of some data that is later re-loaded by the same thread is especially bad for performance, as it needs to invalidate caches. A single non-coalesced write can invalidate a sector in L1, and L2, requiring the data to be fetched potentially all the way from DRAM for the next load.
 
-**Note:** On CPU (either during a serial execution, or via OpenMP/threads) the optimal data layout is opposite to the GPU one! Since there are typically much fewer CPU threads than parallelized elements, we want to favor caching instead of coalescing. For our example, each CPU thread will deal with several rows of the matrix and benefit from caching. The default layout for multidimensional views in Kokkos is LayoutLeft (column-major) on device, and LayoutRight (row-major) on host. I believe that this is due to historical reasons; algorithms from the Trilinos library that is built upon Kokkos are working on multi-dimensional views where the number of rows far exceeds the number of columns, and are therefore parallelized along rows. Refer to [this section of the 2nd module of the Kokkos lectures series](https://www.youtube.com/watch?v=O-asHTtO7O4&t=4337s) for more discussions on this topic.
+**Note:** On CPU (either during a serial execution, or via OpenMP/threads) the optimal data layout is opposite to the GPU one! The reason is quite subtle and out of scope for this blog. But as a result, the default layout for multidimensional views in Kokkos is LayoutLeft (column-major) on device, and LayoutRight (row-major) on host. I believe that this is due to historical reasons; algorithms from the Trilinos library that is built upon Kokkos are working on multi-dimensional views where the number of rows far exceeds the number of columns, and are therefore parallelized along rows. Refer to [this section of the 2nd module of the Kokkos lectures series](https://www.youtube.com/watch?v=O-asHTtO7O4&t=4337s) for more discussions on this topic. But beware ! It does not mean that LayoutLeft is always better on GPU and LayoutRight is always better on CPU. It always depends on how you parallelize !
 
 For simulations on unstructured meshes, I recommend using [Z-order curve](https://en.wikipedia.org/wiki/Z-order_curve) re-ordering of the mesh elements. For our CFD code TRUST, this enabled an overall +20% speedup due to better coalescing (congrats to [Adrien Bruneton](https://www.linkedin.com/in/adrien-bruneton-7bb0ba94/)).
 
