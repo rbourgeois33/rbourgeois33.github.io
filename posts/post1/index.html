@@ -166,12 +166,6 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../post3/">(WIP) Testing mixed precision at runtime with verrou</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../post4/">(WIP) Scheduling different jobs on the same runner with Gitlab's CI</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../post5/">(WIP) My GPU collection</a>
-                  </li>
               </ul>
       </div>
     </div>
@@ -199,7 +193,7 @@
               
                 <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 2, 2025 12:30:34 UTC"><span class="timeago" datetime="2025-12-02T12:30:34+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 2, 2025 12:30:34 UTC">2025-12-02</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 6, 2025 17:18:52 UTC"><span class="timeago" datetime="2025-12-06T17:18:52+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 6, 2025 17:18:52 UTC">2025-12-06</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -219,8 +213,8 @@
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5">hardware-specific optimizations</a>,</li>
 <li><a href="https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/">warp-level primitives</a>.</li>
 </ul>
-<p>Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.</p>
-<p>If you aim for <em>optimal</em> performance, or if you are tackling complex kernels such as the <a href="https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf">single-pass parallel prefix scan with decoupled look-back</a>, you will need to dive into those <em>advanced</em> topics. But please do not reinvent the wheel ! if a kernel or algorithm is already implemented, optimized, and distributed in a library, do not code it (Except for learning purposes!). Here is a non exhaustive sample:</p>
+<p>Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or sparse matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.</p>
+<p>If you aim for <em>optimal</em> performance, or if you are tackling complex kernels such as the <a href="https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf">single-pass parallel prefix scan with decoupled look-back</a>, you will need to dive into those <em>advanced</em> topics. But please do not reinvent the wheel ! If a kernel or algorithm is already implemented, optimized, and distributed in a library, do not re-code it yourself (Except for learning purposes!). Here is a non exhaustive sample:</p>
 <ul>
 <li><a href="https://docs.Nvidia.com/cuda-libraries/index.html">CUDA Libraries</a>.</li>
 <li><a href="https://github.com/nvidia/cccl">CUDA Core Compute Libraries</a>.</li>
@@ -244,11 +238,11 @@
 <li>Some knowledge of occupancy. <a href="#refresher-on-occupancy">Refresher</a>.</li>
 <li>Here are resources on GPU architecture / CUDA programming:<ul>
 <li><a href="https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ">Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)</a>,</li>
+<li><a href="https://docs.nvidia.com/cuda/cuda-programming-guide/">The <em>new</em> CUDA programming guide</a>,</li>
 <li><a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">1h30 lecture by Athena Elfarou (Nvidia)</a>,</li>
 <li><a href="https://www.youtube.com/watch?v=OsK8YFHTtNs&amp;list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj">13 lectures by Bob Crovella (Nvidia)</a>,</li>
 <li><a href="https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/">How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)</a>,</li>
 <li><a href="https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/">CUDA C++ Best Practices Guide</a>,</li>
-<li><a href="https://docs.nvidia.com/nsight-compute/index.html">Nsight compute documentation</a>.</li>
 </ul>
 </li>
 </ul>
@@ -256,8 +250,8 @@
 </ul>
 <p>Although not necessary for getting through this blog post, I recommend you learn about:</p>
 <ul>
-<li>How to compile a GPU code, generate a report with <a href="https://youtu.be/04dJ-aePYpE?si=wTO9vJsRmVMBfM8a">Nvidia nsight compute</a> and loading in with the ui.</li>
-<li>Application-level optimization:<ul>
+<li>How to compile a GPU code, generate a report with Nvidia Nsight compute and loading in with the ui.</li>
+<li>Application-level optimization roadmap:<ul>
 <li>How to build a sensible optimization road-map with e.g. Nvidia Nsight System.</li>
 <li>That you should avoid host to device memory transfers; This tutorial is centered on kernel-level optimization. We assume memory is already available on the GPU.</li>
 <li>How to ensure that it is worth it to optimize the kernel you are working on (Do not assume bottleneck, Assess, Parallelize, Optimize, Deploy).</li>
@@ -270,16 +264,16 @@
 </li>
 <li>What is Kokkos, why you might want to use it and how to get started with it. Some resources:<ul>
 <li><a href="https://www.youtube.com/watch?v=64Qczo9biBI&amp;list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&amp;index=29">ATPESC 2022 Kokkos session</a> by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab).</li>
-<li><a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, but you can find a lot of resources online, also, join the slack!).</li>
+<li><a href="https://www.youtube.com/watch?v=rUIcWtFU5qM&amp;list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF">Kokkos lecture series</a> (kind of outdated, still relevant. Also, join <a href="https://kokkosteam.slack.com/">the slack</a>!.</li>
 <li><strong>Note:</strong> you really <em>should</em> consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes! (see <a href="https://cexa-project.org/">the CExA project</a>).</li>
 </ul>
 </li>
 </ul>
 <h3 id="disclaimers">Disclaimers</h3>
-<p>If you think I wrote something that is wrong, or misleading please let me know! </p>
-<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! </p>
+<p>If you think I wrote something that is wrong, or misleading please let me know! Moreover, do not take my word as gospel, always test and evaluate my advice for your specific problem and report to me if they hurt performance !</p>
+<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. </p>
 <p>I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>important</strong>. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
-<p>It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Moreover, I plan on adding to this blog post as I learn more.</p>
+<p>It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Lastly, I plan on adding/improving this blog post as I learn more.</p>
 <p>I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.</p>
 <h3 id="outline">Outline</h3>
 <p>The outline for this blog post is the following five rules of thumbs,or advice, largely inspired by <a href="https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html">the Nvidia Ampere tuning guide</a>:</p>
@@ -293,7 +287,7 @@
 <p>Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you <em>where</em> to look for information in <code>ncu</code>. Look for the <em>"Profiler diagnosis"</em> sections.</p>
 <h3 id="before-we-start">Before we start</h3>
 <p>Before going into the five advice, I invite you to read <a href="../post2/">my blog post on the cost of communications</a> that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching <a href="https://www.youtube.com/watch?v=iPCBCjgoAbk">this brilliant talk on communication-avoiding algorithms</a>. </p>
-<p>All sample code and <code>ncu</code> reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample">here</a> along with compilation and execution instructions. The reports were generated with my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
+<p>All sample code and <code>ncu</code> reports can be found <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/tree/main/code-sample">here</a> along with compilation and execution instructions. The samples were ran with my <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU.</p>
 <h4 id="refresher-software-hardware-concepts-in-cuda">Refresher: software / hardware concepts in CUDA</h4>
 <p><img alt="alt text" src="../image-14.png" />
 <strong>Figure 1:</strong> Software / hardware memory hierarchy of an Nvidia GPU. <a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">source</a>. </p>
