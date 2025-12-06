@@ -25,9 +25,9 @@ I will not go over what I consider to be *advanced* optimization techniques such
 - [hardware-specific optimizations](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5),
 - [warp-level primitives](https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/).
 
-Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.
+Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or sparse matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.
 
-If you aim for *optimal* performance, or if you are tackling complex kernels such as the [single-pass parallel prefix scan with decoupled look-back](https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf), you will need to dive into those *advanced* topics. But please do not reinvent the wheel ! if a kernel or algorithm is already implemented, optimized, and distributed in a library, do not code it (Except for learning purposes!). Here is a non exhaustive sample:
+If you aim for *optimal* performance, or if you are tackling complex kernels such as the [single-pass parallel prefix scan with decoupled look-back](https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf), you will need to dive into those *advanced* topics. But please do not reinvent the wheel ! If a kernel or algorithm is already implemented, optimized, and distributed in a library, do not re-code it yourself (Except for learning purposes!). Here is a non exhaustive sample:
 
 - [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
 - [CUDA Core Compute Libraries](https://github.com/nvidia/cccl).
@@ -51,16 +51,16 @@ In this tutorial, I will assume that you are already familiar with:
     - Some knowledge of occupancy. [Refresher](#refresher-on-occupancy).
     - Here are resources on GPU architecture / CUDA programming:
         - [Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)](https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ),
+        - [The *new* CUDA programming guide](https://docs.nvidia.com/cuda/cuda-programming-guide/),
         - [1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/),
         - [13 lectures by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj),
         - [How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/),
         - [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/),
-        - [Nsight compute documentation](https://docs.nvidia.com/nsight-compute/index.html).
 
 Although not necessary for getting through this blog post, I recommend you learn about:
 
-- How to compile a GPU code, generate a report with [Nvidia nsight compute](https://youtu.be/04dJ-aePYpE?si=wTO9vJsRmVMBfM8a) and loading in with the ui.
-- Application-level optimization:
+- How to compile a GPU code, generate a report with Nvidia Nsight compute and loading in with the ui.
+- Application-level optimization roadmap:
     - How to build a sensible optimization road-map with e.g. Nvidia Nsight System.
     - That you should avoid host to device memory transfers; This tutorial is centered on kernel-level optimization. We assume memory is already available on the GPU.
     - How to ensure that it is worth it to optimize the kernel you are working on (Do not assume bottleneck, Assess, Parallelize, Optimize, Deploy).
@@ -69,18 +69,18 @@ Although not necessary for getting through this blog post, I recommend you learn
         -  [APOD cycle](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/#assess-parallelize-optimize-deploy).
 - What is Kokkos, why you might want to use it and how to get started with it. Some resources:
     - [ATPESC 2022 Kokkos session](https://www.youtube.com/watch?v=64Qczo9biBI&list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&index=29) by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab).
-    - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, but you can find a lot of resources online, also, join the slack!).
+    - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant. Also, join [the slack](https://kokkosteam.slack.com/)!.
     -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes! (see [the CExA project](https://cexa-project.org/)).
 
 ### Disclaimers
 
-If you think I wrote something that is wrong, or misleading please let me know! 
+If you think I wrote something that is wrong, or misleading please let me know! Moreover, do not take my word as gospel, always test and evaluate my advice for your specific problem and report to me if they hurt performance !
 
-I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. Moreover, do not take my word, test and evaluate yourself! 
+I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. 
 
 I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **important**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
-It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Moreover, I plan on adding to this blog post as I learn more.
+It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Lastly, I plan on adding/improving this blog post as I learn more.
 
 I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.
 
@@ -100,7 +100,7 @@ Feel free to jump straight into your sections of interest. One of the main inter
 
 Before going into the five advice, I invite you to read [my blog post on the cost of communications](post2.md) that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). 
 
-All sample code and `ncu` reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/code-sample/code-sample) along with compilation and execution instructions. The reports were generated with my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
+All sample code and `ncu` reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/main/code-sample) along with compilation and execution instructions. The samples were ran with my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
 
 #### Refresher: software / hardware concepts in CUDA
 ![alt text](image-14.png)
