@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Post3 - Rémi Bourgeois's blog</title>
+    <title>C++ Shenanigans - Rémi Bourgeois's blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Post3";
+        var mkdocs_page_name = "C++ Shenanigans";
         var mkdocs_page_input_path = "posts/post3.md";
         var mkdocs_page_url = null;
       </script>
@@ -49,10 +49,30 @@
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
-              <ul>
+              <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../post1/">Five basic performance advice for porting kernels to the GPU</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">C++ Shenanigans</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#why-this-blog-post">Why this blog-post?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#the-shenanigans">The shenanigans</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#when-is-template-required-and-why">When is .template required? And why?</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#how-to-control-which-member-function-is-called-in-an-inheritance-hierarchy">How to control which member function is called in an inheritance hierarchy?</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#references">References</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#comments">Comments</a>
+    </li>
+    </ul>
                   </li>
               </ul>
       </div>
@@ -69,7 +89,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Post3</li>
+          <li class="breadcrumb-item">Posts</li>
+      <li class="breadcrumb-item active">C++ Shenanigans</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -78,10 +99,178 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                
+                <h1 id="c-shenanigans">C++ Shenanigans</h1>
+<p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 12, 2025 11:33:43 UTC"><span class="timeago" datetime="2025-12-12T11:33:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 12, 2025 11:33:43 UTC">2025-12-12</span></em>.<br />
+<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost3%2F&amp;label=Visits" /></p>
+<h2 id="why-this-blog-post">Why this blog-post?</h2>
+<p><strong>November 2025:</strong> After years of using C++ without <em>really</em> trying to understand it (shame), I have finally decided to take it seriously. No more ChatGPT'ing the error messages and forgetting immediately about the fixes. No more copy-pasting code samples here and there and trying to fix them blind until it finally compiles. Moreover, I very much relate to <a href="https://mlwithouttears.com/about/">Lorenzo Miaggi</a> <em>"Blogging is one of the most effective ways I learn. If I don't write, I don't really understand"</em>. This is why this post exists: It's a disorganized list of C++ shenanigans that I discovered along the way, working in <a href="https://cea-trust-platform.github.io/">TRUST</a>.</p>
+<h2 id="the-shenanigans">The shenanigans</h2>
+<h3 id="when-is-template-required-and-why">When is <code>.template</code> required? And why?</h3>
+<p>Let's say that you want to write a templated function,</p>
+<pre><code class="language-c++">template&lt;int N&gt;
+void foo(){
+    std::cout&lt;&lt; N &lt;&lt;std::endl;
+}
+</code></pre>
+<p>calling it in main is easy:</p>
+<pre><code class="language-c++">foo&lt;10&gt;(); //Okay in main
+</code></pre>
+<p>This will print <code>10</code> (<a href="https://godbolt.org/z/sK1djxj1Y">see it on gobolt</a>). The compiler reads our file from top to bottom, first stumbles upon the definition of <code>foo</code>. Then, in <code>main</code>, it sees <code>foo&lt;10&gt;</code> and instantiates the corresponding version of foo that will be called at run-time:</p>
+<pre><code class="language-cpp">template&lt;&gt;
+void foo&lt;10&gt;(){
+    std::cout&lt;&lt; 10 &lt;&lt;std::endl;
+}
+</code></pre>
+<p>But things can get a little more complicated calling template functions that are members of template classes. Let's first consider a simple template class:</p>
+<pre><code class="language-cpp">template&lt;int M&gt;
+class A
+{
+public:
+    A(){};
+
+    template&lt;int N&gt;
+    void foo(){
+        std::cout &lt;&lt; N &lt;&lt;std::endl;
+    }
+};
+</code></pre>
+<p>Our class <code>A</code> is templated by <code>int M</code> (which has no use) and has a template member function <code>foo</code> that simply prints its template <code>int</code> argument, <code>N</code>. Calling <code>foo</code> in <code>main</code> is perfectly fine (<a href="https://godbolt.org/z/9qxc8v883">see it on godbolt</a>):</p>
+<pre><code class="language-cpp">A&lt;42&gt; a;
+a.foo&lt;10&gt;(); //Okay in main!
+</code></pre>
+<p>But things start to go south when trying to call <code>foo</code> in a place where <code>A</code> is not fully instantiated, for instance:</p>
+<pre><code class="language-cpp">// [A's definition]
+
+// ...
+
+template&lt;typename object_t&gt; 
+void create_a_object_and_call_foo(){
+    object_t object;
+    object.foo&lt;10&gt;(); //Ambiguous! 
+}
+
+// ...
+
+int main(){
+    create_a_object_and_call_foo&lt;A&lt;42&gt;&gt;();
+    return 0;
+}
+</code></pre>
+<p>does not compile! (<a href="https://godbolt.org/z/carf9Gh4q">see it on compiler explorer</a>). Indeed, when the compiler reaches the line <code>object.foo&lt;10&gt;();</code>, it has no idea what <code>object_t</code> is and that we plan it to be <code>A&lt;42&gt;</code> lower in the file. As a result, it has no idea what <code>object.foo</code> is. In particular, <strong>the compiler cannot tell if foo is a template function or not</strong>, leading to an ambiguous meaning:</p>
+<ul>
+<li>If <code>object.foo</code> is a template function with an int parameter, this line means: <em>call <code>object</code>'s <code>foo</code> method with template argument <code>10</code></em>. This is what we have in mind.</li>
+<li>If <code>object.foo</code> is not a template function, the line means: <em>compute <code>object.foo</code>, compare it to <code>10</code>, and compare this bool result to <code>&gt;()</code></em> which is wrong syntactically. </li>
+</ul>
+<p>As a result, we need to hint the compiler that <code>object.foo</code> is indeed a template function with <code>.template</code>:</p>
+<pre><code class="language-cpp">template&lt;typename object_t&gt; 
+void create_a_object_and_call_foo(){
+    object_t object;
+    object.template foo&lt;10&gt;(); //not ambiguous!
+}
+</code></pre>
+<p>This now compiles! (<a href="https://godbolt.org/z/KcahPPj3x">see it on compiler explorer</a>). </p>
+<p>Since <code>object_t</code> could be anything, <code>object.foo</code> could be anything too! The issue is quite easy to understand, but sometimes it can be trickier. For example, even if we tell the compiler that <code>object_t</code> is in fact an instance of <code>A</code>:</p>
+<pre><code class="language-cpp">template&lt;int M&gt; 
+void create_a_A_and_call_foo(){
+    A&lt;M&gt; a;
+    a.foo&lt;10&gt;(); //Ambiguous!
+}
+</code></pre>
+<p>it still does not compile, for the exact same reason! The compiler cannot make the link between <code>A&lt;M&gt;</code> and our class. Indeed, what if we instantiated a special case of <code>A</code>, let's say <code>A&lt;76&gt;</code> for which <code>A&lt;76&gt;::foo</code> is not template? We have an ambiguous statement. As a result, <code>.template</code> can be necessary in many seemingly different contexts (<a href="https://godbolt.org/z/7zjYKv3df">see a few on compiler explorer and fix them yourself</a>) that all boil down to the same underlying rule:</p>
+<p><strong>You need to add <code>.template</code> to all calls to template member functions of template classes in a context where the class is not fully specified.</strong></p>
+<h3 id="how-to-control-which-member-function-is-called-in-an-inheritance-hierarchy">How to control which member function is called in an inheritance hierarchy?</h3>
+<p>Let's consider the following code:</p>
+<pre><code class="language-cpp">#include &lt;iostream&gt;
+
+struct Person {
+    void what_am_I() {
+        std::cout &lt;&lt; &quot;I'm a person!&quot; &lt;&lt; std::endl;
+    }
+};
+
+struct Student : Person {
+    void what_am_I() {
+        std::cout &lt;&lt; &quot;I'm a person and also a student!&quot; &lt;&lt; std::endl;
+    }
+};
+
+void what_is(Person &amp;p) {
+    p.what_am_I();
+}
+
+int main() {
+    Person p;
+    Student s;
+    what_is(p);
+    what_is(s);
+}
+</code></pre>
+<p>We create a struct named <code>Person</code> and a derived class <code>Student</code>. Each struct has a member function <code>what_am_I</code>. A <code>Person</code> that is not a <code>Student</code> simply says <code>"I'm a person!"</code>. A good <code>Student</code> knows about item 32 of <a href="#1">[S. Meyer, 2005]</a> and says <code>"I'm a person and also a student!"</code>. Then, we write a function <code>what_is</code> that takes any <code>Person</code> as an input and asks what it is. It is valid to give a <code>Student</code> to that function since a <code>Student</code> is a <code>Person</code>, it will be downcasted by reference. This is precisely what we do in <code>main</code>. Try and guess, what will this program output? <a href="https://godbolt.org/z/1n19cjdhW">See it on compiler explorer</a>.</p>
+<p>Too much suspense. This program prints:</p>
+<pre><code class="language-bash">I'm a person!
+I'm a person!
+</code></pre>
+<p>which is not wrong, but not necessarily what we intended. In <code>what_is</code>, <code>what_am_I</code> is statically linked to <code>Person::what_am_I</code>. We could change this by writing a special <code>what_is</code> for <code>Student</code>s, but that would be duplicated code. We could also template <code>what_is</code>, but this option is not always available in complex code bases. Let's change the behavior with the <code>virtual</code> keyword:</p>
+<pre><code class="language-cpp">#include &lt;iostream&gt;
+
+struct Person {
+    virtual void what_am_I() {
+        std::cout &lt;&lt; &quot;I'm a person!&quot; &lt;&lt; std::endl;
+    }
+};
+
+struct Student : Person {
+    void what_am_I() override {
+        std::cout &lt;&lt; &quot;I'm a person and also a student!&quot; &lt;&lt; std::endl;
+    }
+};
+
+void what_is(Person &amp;p) {
+    p.what_am_I();
+}
+
+int main() {
+    Person p;
+    Student s;
+    what_is(p);
+    what_is(s);
+}
+</code></pre>
+<p>This program prints </p>
+<pre><code class="language-bash">I'm a person!
+I'm a person and also a student!
+</code></pre>
+<p><a href="https://godbolt.org/z/ffbr5r1M4">See it on compiler explorer</a>. The <code>virtual</code> keyword in front of the base class <code>Person</code>'s <code>what_am_I</code> definition means that it will provide an interface (function name <code>what_am_I</code>, return type <code>void</code> and input types <code>None</code>) as well as a default implementation to all its derived classes. <code>Student</code> does provide its own implementation of <code>what_am_I</code> with the keyword <code>override</code>. Therefore all calls to a <code>Person</code>'s <code>what_am_I</code> will link at runtime with the closest version of <code>what_am_I</code>. In particular, even if a <code>Student</code> is downcasted to a <code>Person</code> by reference like in <code>what_is</code>, <code>p.what_am_I</code> will resolve to <code>Student::what_am_I</code>.</p>
+<p>Note that the version with <code>virtual</code> is not more or less correct than the original one, it just means something different.</p>
+<p><strong>Use <code>virtual</code> to finally control member function calls in object hierarchies.</strong></p>
+<p>See Item 34 of <a href="#1">[S. Meyer, 2005]</a> for more on virtual functions.</p>
+<h2 id="references">References</h2>
+<p><a id="1">[S. Meyer, 2005]</a> Effective C++: 55 Specific Ways to Improve Your Programs and Designs. <a href="https://dl.e-bookfa.ir/freebooks/Effective%20C++,%203rd%20Edition%20by%20Scott%20Meyers%20%28e-bookfa.ir%29.pdf">PDF</a>. (Thanks Adrien for sharing !)</p>
+<h2 id="special-thanks">Special thanks</h2>
+<p>Thanks to my colleagues of the LCAN team for always taking the time to answer my dumb C++ questions.</p>
+<h2 id="comments">Comments</h2>
+<script src="https://giscus.app/client.js"
+        data-repo="rbourgeois33/rbourgeois33.github.io"
+        data-repo-id="R_kgDOPmDw5g"
+        data-category="General"
+        data-category-id="DIC_kwDOPmDw5s4CvWWl"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+</script>
               
             </div>
           </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../post2/" class="btn btn-neutral float-left" title="The cost of communications"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
 
   <hr/>
 
@@ -102,6 +291,8 @@
   <div class="rst-versions" role="note" aria-label="Versions">
   <span class="rst-current-version" data-toggle="rst-current-version">
     
+    
+      <span><a href="../post2/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
   </span>
