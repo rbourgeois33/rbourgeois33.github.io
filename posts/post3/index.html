@@ -62,7 +62,7 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#when-is-template-required-and-why">When is .template required? And why?</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#how-to-control-which-member-function-is-called-in-an-inheritance-hierarchy">How to control which member function is called in an inheritance hierarchy?</a>
+    <li class="toctree-l3"><a class="reference internal" href="#what-does-virtual-means">What does virtual means?</a>
     </li>
         </ul>
     </li>
@@ -101,8 +101,9 @@
               
                 <h1 id="c-shenanigans">C++ Shenanigans</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 12, 2025 11:33:43 UTC"><span class="timeago" datetime="2025-12-12T11:33:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 12, 2025 11:33:43 UTC">2025-12-12</span></em>.<br />
-<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost3%2F&amp;label=Visits" /></p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="December 12, 2025 11:33:43 UTC"><span class="timeago" datetime="2025-12-12T11:33:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="December 12, 2025 11:33:43 UTC">2025-12-12</span></em>.  </p>
+<!--- ![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost3%2F&label=Visits) --->
+
 <h2 id="why-this-blog-post">Why this blog-post?</h2>
 <p><strong>November 2025:</strong> After years of using C++ without <em>really</em> trying to understand it (shame), I have finally decided to take it seriously. No more ChatGPT'ing the error messages and forgetting immediately about the fixes. No more copy-pasting code samples here and there and trying to fix them blind until it finally compiles. Moreover, I very much relate to <a href="https://mlwithouttears.com/about/">Lorenzo Miaggi</a> <em>"Blogging is one of the most effective ways I learn. If I don't write, I don't really understand"</em>. This is why this post exists: It's a disorganized list of C++ shenanigans that I discovered along the way, working in <a href="https://cea-trust-platform.github.io/">TRUST</a>.</p>
 <h2 id="the-shenanigans">The shenanigans</h2>
@@ -139,8 +140,8 @@ public:
 <pre><code class="language-cpp">A&lt;42&gt; a;
 a.foo&lt;10&gt;(); //Okay in main!
 </code></pre>
-<p>But things start to go south when trying to call <code>foo</code> in a place where <code>A</code> is not fully instantiated, for instance:</p>
-<pre><code class="language-cpp">// [A's definition]
+<p>But things start to go south when trying to call <code>foo</code> as a member function of an object whose type is not a fully explicit reference to <code>A</code>, e.g. <code>A&lt;42&gt;</code>. This for instance:</p>
+<pre><code class="language-cpp">// [Our class A]
 
 // ...
 
@@ -160,7 +161,7 @@ int main(){
 <p>does not compile! (<a href="https://godbolt.org/z/carf9Gh4q">see it on compiler explorer</a>). Indeed, when the compiler reaches the line <code>object.foo&lt;10&gt;();</code>, it has no idea what <code>object_t</code> is and that we plan it to be <code>A&lt;42&gt;</code> lower in the file. As a result, it has no idea what <code>object.foo</code> is. In particular, <strong>the compiler cannot tell if foo is a template function or not</strong>, leading to an ambiguous meaning:</p>
 <ul>
 <li>If <code>object.foo</code> is a template function with an int parameter, this line means: <em>call <code>object</code>'s <code>foo</code> method with template argument <code>10</code></em>. This is what we have in mind.</li>
-<li>If <code>object.foo</code> is not a template function, the line means: <em>compute <code>object.foo</code>, compare it to <code>10</code>, and compare this bool result to <code>&gt;()</code></em> which is wrong syntactically. </li>
+<li>If <code>object.foo</code> is not a template function, the line means: <em>compute <code>object.foo</code>, compare it to <code>10</code>, and compare this bool result to <code>()</code></em> which is wrong syntactically. </li>
 </ul>
 <p>As a result, we need to hint the compiler that <code>object.foo</code> is indeed a template function with <code>.template</code>:</p>
 <pre><code class="language-cpp">template&lt;typename object_t&gt; 
@@ -170,16 +171,16 @@ void create_a_object_and_call_foo(){
 }
 </code></pre>
 <p>This now compiles! (<a href="https://godbolt.org/z/KcahPPj3x">see it on compiler explorer</a>). </p>
-<p>Since <code>object_t</code> could be anything, <code>object.foo</code> could be anything too! The issue is quite easy to understand, but sometimes it can be trickier. For example, even if we tell the compiler that <code>object_t</code> is in fact an instance of <code>A</code>:</p>
+<p>Since <code>object_t</code> could be anything, <code>object.foo</code> could be anything too! This can also get trickier. For example, even if we tell the compiler that <code>object_t</code> is in fact an instance of <code>A</code>:</p>
 <pre><code class="language-cpp">template&lt;int M&gt; 
 void create_a_A_and_call_foo(){
     A&lt;M&gt; a;
     a.foo&lt;10&gt;(); //Ambiguous!
 }
 </code></pre>
-<p>it still does not compile, for the exact same reason! The compiler cannot make the link between <code>A&lt;M&gt;</code> and our class. Indeed, what if we instantiated a special case of <code>A</code>, let's say <code>A&lt;76&gt;</code> for which <code>A&lt;76&gt;::foo</code> is not template? We have an ambiguous statement. As a result, <code>.template</code> can be necessary in many seemingly different contexts (<a href="https://godbolt.org/z/7zjYKv3df">see a few on compiler explorer and fix them yourself</a>) that all boil down to the same underlying rule:</p>
-<p><strong>You need to add <code>.template</code> to all calls to template member functions of template classes in a context where the class is not fully specified.</strong></p>
-<h3 id="how-to-control-which-member-function-is-called-in-an-inheritance-hierarchy">How to control which member function is called in an inheritance hierarchy?</h3>
+<p>it still does not compile, for the exact same reason! <code>A&lt;M&gt;</code> is not a fully explicit reference to an instance of <code>A</code>. The compiler cannot make the link between <code>A&lt;M&gt;</code> and our class. Indeed, what if we instantiated a special case of <code>A</code>, let's say <code>A&lt;76&gt;</code> for which <code>A&lt;76&gt;::foo</code> is not template? We have an ambiguous statement. As a result, <code>.template</code> can be necessary in many seemingly different contexts (<a href="https://godbolt.org/z/7zjYKv3df">see a few on compiler explorer and fix them yourself</a>) that all boil down to the same underlying rule:</p>
+<p><strong>You need to add <code>.template</code> to all calls to template member functions of a template class in a context where the class is not fully explicited.</strong></p>
+<h3 id="what-does-virtual-means">What does virtual means?</h3>
 <p>Let's consider the following code:</p>
 <pre><code class="language-cpp">#include &lt;iostream&gt;
 
@@ -206,12 +207,12 @@ int main() {
     what_is(s);
 }
 </code></pre>
-<p>We create a struct named <code>Person</code> and a derived class <code>Student</code>. Each struct has a member function <code>what_am_I</code>. A <code>Person</code> that is not a <code>Student</code> simply says <code>"I'm a person!"</code>. A good <code>Student</code> knows about item 32 of <a href="#1">[S. Meyer, 2005]</a> and says <code>"I'm a person and also a student!"</code>. Then, we write a function <code>what_is</code> that takes any <code>Person</code> as an input and asks what it is. It is valid to give a <code>Student</code> to that function since a <code>Student</code> is a <code>Person</code>, it will be downcasted by reference. This is precisely what we do in <code>main</code>. Try and guess, what will this program output? <a href="https://godbolt.org/z/1n19cjdhW">See it on compiler explorer</a>.</p>
+<p>We create a struct named <code>Person</code> and a derived class <code>Student</code>. Each struct has a member function <code>what_am_I</code>. A <code>Person</code> that is not a <code>Student</code> simply says <code>"I'm a person!"</code>. A good <code>Student</code> knows about item 32 of <a href="#1">[S. Meyer, 2005]</a> and says <code>"I'm a person and also a student!"</code>. Then, we write a function <code>what_is</code> that takes any <code>Person</code> as an input and asks what it is. It is valid to give a <code>Student</code> to that function: a <code>Student</code> is a <code>Person</code> so it will be downcasted by reference. This is precisely what we do in <code>main</code>. Try and guess, what will this program output? <a href="https://godbolt.org/z/1n19cjdhW">See it on compiler explorer</a>.</p>
 <p>Too much suspense. This program prints:</p>
 <pre><code class="language-bash">I'm a person!
 I'm a person!
 </code></pre>
-<p>which is not wrong, but not necessarily what we intended. In <code>what_is</code>, <code>what_am_I</code> is statically linked to <code>Person::what_am_I</code>. We could change this by writing a special <code>what_is</code> for <code>Student</code>s, but that would be duplicated code. We could also template <code>what_is</code>, but this option is not always available in complex code bases. Let's change the behavior with the <code>virtual</code> keyword:</p>
+<p>which is not wrong, but not necessarily what we intended. In <code>what_is</code>, <code>what_am_I</code> is statically linked to <code>Person::what_am_I</code>. We could change this by writing a special <code>what_is</code> for <code>Student</code>s, but that would be duplicated code. We could also template <code>what_is</code>, but this option is not always available in complex code bases. Moreover, if we reference-downcast the <code>Student</code> to a <code>Person</code> in another context, and call <code>what_is</code> on it, the <code>Person</code> version will be selected again. Instead let's change the behavior of our function with the <code>virtual</code> keyword:</p>
 <pre><code class="language-cpp">#include &lt;iostream&gt;
 
 struct Person {
@@ -241,9 +242,9 @@ int main() {
 <pre><code class="language-bash">I'm a person!
 I'm a person and also a student!
 </code></pre>
-<p><a href="https://godbolt.org/z/ffbr5r1M4">See it on compiler explorer</a>. The <code>virtual</code> keyword in front of the base class <code>Person</code>'s <code>what_am_I</code> definition means that it will provide an interface (function name <code>what_am_I</code>, return type <code>void</code> and input types <code>None</code>) as well as a default implementation to all its derived classes. <code>Student</code> does provide its own implementation of <code>what_am_I</code> with the keyword <code>override</code>. Therefore all calls to a <code>Person</code>'s <code>what_am_I</code> will link at runtime with the closest version of <code>what_am_I</code>. In particular, even if a <code>Student</code> is downcasted to a <code>Person</code> by reference like in <code>what_is</code>, <code>p.what_am_I</code> will resolve to <code>Student::what_am_I</code>.</p>
-<p>Note that the version with <code>virtual</code> is not more or less correct than the original one, it just means something different.</p>
-<p><strong>Use <code>virtual</code> to finally control member function calls in object hierarchies.</strong></p>
+<p><a href="https://godbolt.org/z/ffbr5r1M4">See it on compiler explorer</a>. The <code>virtual</code> keyword in front of the base class <code>Person</code>'s <code>what_am_I</code> definition means that it will provide an interface (function name <code>what_am_I</code>, return type <code>void</code> and input types <code>None</code>) as well as a default implementation to all its derived classes. <code>Student</code> is free to override this default behavior. It provide its own implementation of <code>what_am_I</code> with the keyword <code>override</code>. Therefore all calls to a <code>Person</code>'s <code>what_am_I</code> will link at runtime with the closest version of <code>what_am_I</code>. In particular, even if a <code>Student</code> is downcasted to a <code>Person</code> by reference like in <code>what_is</code>, <code>p.what_am_I</code> will resolve to <code>Student::what_am_I</code>.</p>
+<p><strong>Note:</strong> The version with <code>virtual</code> is not more or less correct than the original one, it just means something different.</p>
+<p><strong>Use <code>virtual</code> to finely control member function calls in object hierarchies.</strong></p>
 <p>See Item 34 of <a href="#1">[S. Meyer, 2005]</a> for more on virtual functions.</p>
 <h2 id="references">References</h2>
 <p><a id="1">[S. Meyer, 2005]</a> Effective C++: 55 Specific Ways to Improve Your Programs and Designs. <a href="https://dl.e-bookfa.ir/freebooks/Effective%20C++,%203rd%20Edition%20by%20Scott%20Meyers%20%28e-bookfa.ir%29.pdf">PDF</a>. (Thanks Adrien for sharing !)</p>
