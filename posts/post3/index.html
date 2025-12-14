@@ -244,8 +244,8 @@ I'm a person and also a student!
 </code></pre>
 <p><a href="https://godbolt.org/z/ffbr5r1M4">See it on compiler explorer</a>. The <code>virtual</code> keyword in front of the base class <code>Person</code>'s <code>what_am_I</code> definition means that it will provide an interface (function name <code>what_am_I</code>, return type <code>void</code> and input types <code>None</code>) as well as a default implementation to all its derived classes. <code>Student</code> is free to override this default behavior. It provide its own implementation of <code>what_am_I</code> with the keyword <code>override</code>. Therefore all calls to a <code>Person</code>'s <code>what_am_I</code> will link at runtime with its deepest version applicable of <code>what_am_I</code>. In particular, even if a <code>Student</code> is downcasted to a <code>Person</code> by reference like in <code>what_is</code>, <code>p.what_am_I</code> will resolve to <code>Student::what_am_I</code>.</p>
 <p><strong>Note:</strong> The version with <code>virtual</code> is not more or less correct than the original one, it just means something different.</p>
-<p><strong>Use <code>virtual</code> to finely control member function calls in object hierarchies.</strong></p>
-<p>See Item 34 of <a href="#1">[S. Meyer, 2005]</a> for more on virtual functions.</p>
+<p><strong>Understand the <code>virtual</code> to finely control member function calls in object hierarchies.</strong></p>
+<p>See Item 34 of <a href="#1">[S. Meyer, 2005]</a> for more on virtual functions. In Item 36, the author tells us to <strong>Never</strong> redifine an inherited non-virtual function. While I strongly, agree with this advice you, like me, may have to work in a code-base where this rule is already violated.</p>
 <h2 id="references">References</h2>
 <p><a id="1">[S. Meyer, 2005]</a> Effective C++: 55 Specific Ways to Improve Your Programs and Designs. <a href="https://dl.e-bookfa.ir/freebooks/Effective%20C++,%203rd%20Edition%20by%20Scott%20Meyers%20%28e-bookfa.ir%29.pdf">PDF</a>. (Thanks Adrien for sharing !)</p>
 <h2 id="special-thanks">Special thanks</h2>
