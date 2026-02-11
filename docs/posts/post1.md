@@ -29,8 +29,8 @@ Because they are not required to get reasonable performances on simple kernels s
 
 If you aim for *optimal* performance, or if you are tackling complex kernels such as the [single-pass parallel prefix scan with decoupled look-back](https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf), you will need to dive into those *advanced* topics. But please do not reinvent the wheel ! If a kernel or algorithm is already implemented, optimized, and distributed in a library, do not re-code it yourself (Except for learning purposes!). Here is a non exhaustive sample:
 
-- [CUDA Libraries](https://docs.Nvidia.com/cuda-libraries/index.html).
-- [CUDA Core Compute Libraries](https://github.com/nvidia/cccl).
+- [CUDA-X Libraries](https://docs.Nvidia.com/cuda-libraries/index.html) for many common numerical need (linear algebra, FFT, graphs..).
+- [CUDA Core Compute Libraries](https://github.com/nvidia/cccl) for the std library algorithms optimized on the GPU.
 - [Kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
 - [Trilinos](https://trilinos.github.io/) for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.
 - [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs).
@@ -76,7 +76,7 @@ Although not necessary for getting through this blog post, I recommend you learn
 
 If you think I wrote something that is wrong, or misleading please let me know! Moreover, do not take my word as gospel, always test and evaluate my advice for your specific problem and report to me if they hurt performance !
 
-I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors. Although, at the time I am writing this (September 2025), rocm's kernel profilers seem a lot less user friendly. 
+I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors.
 
 I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **important**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
