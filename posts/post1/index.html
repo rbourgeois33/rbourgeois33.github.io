@@ -195,7 +195,7 @@
               
                 <h1 id="five-basic-performance-advice-for-porting-kernels-to-the-gpu">Five basic performance advice for porting kernels to the GPU.</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a> !</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="February 12, 2026 09:03:43 UTC"><span class="timeago" datetime="2026-02-12T09:03:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="February 12, 2026 09:03:43 UTC">2026-02-12</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="February 18, 2026 17:38:52 UTC"><span class="timeago" datetime="2026-02-18T17:38:52+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="February 18, 2026 17:38:52 UTC">2026-02-18</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="some-context-and-motivations">Some context and motivations</h3>
@@ -220,6 +220,7 @@
 <ul>
 <li><a href="https://docs.Nvidia.com/cuda-libraries/index.html">CUDA-X Libraries</a> for many common numerical need (linear algebra, FFT, graphs..).</li>
 <li><a href="https://github.com/nvidia/cccl">CUDA Core Compute Libraries</a> for the std library algorithms optimized on the GPU.</li>
+<li><a href="https://rocm.docs.amd.com/en/latest/reference/api-libraries.html">ROCm libraries</a> AMD equivalent of the two above entries.</li>
 <li><a href="https://github.com/kokkos/kokkos-kernels">Kokkos kernels</a> for portable BLAS, sparse BLAS and graph kernels.</li>
 <li><a href="https://trilinos.github.io/">Trilinos</a> for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.</li>
 <li><a href="https://petsc.org/release/">PETSc</a> for the scalable solution of scientific applications modeled by partial differential equations (PDEs).</li>
@@ -273,7 +274,7 @@
 </ul>
 <h3 id="disclaimers">Disclaimers</h3>
 <p>If you think I wrote something that is wrong, or misleading please let me know! Moreover, do not take my word as gospel, always test and evaluate my advice for your specific problem and report to me if they hurt performance !</p>
-<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with the performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). However, note that AMD provides similar profilers and that the advice that I give here are general enough so that they apply for GPUs from both vendors.</p>
+<p>I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with their performance tools such as <a href="https://developer.Nvidia.com/nsight-systems">nsight systems</a> (<code>nsys</code>) and <a href="https://developer.Nvidia.com/nsight-compute">nsight compute</a> (<code>ncu</code>). Note that AMD provides similar profilers that are well explained in the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html">AMD GPUs profiling guide</a>. Lastly, note that the advice that I give here are general enough so that they apply for GPUs from both vendors.<!-- If you are curious about understanding why some optimizations yield very different accelerations on AMD vs. Nvidia hardware, go read my <a href="post4.md">blog-post</a> on the different architectural choices between AMD and Nvidia GPUs and their implications on performance --></p>
 <p>I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is <strong>important</strong>. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.</p>
 <p>It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Lastly, I plan on adding/improving this blog post as I learn more.</p>
 <p>I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.</p>
@@ -898,6 +899,14 @@ if (expensive_option){
 <strong>Figure 22:</strong> Thread divergence warning in the Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8.ncu-rep">sample-8.ncu-rep</a>.</p>
 <p>In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.cpp">sample-8-fixed.cpp</a>, I removed the thread divergence by replacing the condition by <code>if ( i%64 &lt; 32 )</code>. As a result, even warps perform the simple sum, while odd warps will perform <code>cosh</code> and <code>sinh</code> evaluations, completely removing the intra-warp divergence. One can open <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.ncu-rep">sample-8-fixed.ncu-rep</a> and notice the -21% speedup.</p>
 <p><strong>Note:</strong> The operation of the base and the fixed versions differ. I chose these sample codes in order to show you where to look at in the profiler to spot this specific issue. In generality, if applicable, consider re-ordering you data / algorithm to avoid the need for intra-thread divergence.</p>
+<!---## 6. (WIP) Adjust Bytes-In-Flight
+This section follow closely the first part of [this GTC talk](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). Go watch it for more information, but stay here for a small addition on profiler diagnosis.
+
+- BW / DRAM augmente, pas les thread
+- graph de la video
+- profiler diagnosis
+- more work per thread: ILP/DLP (+ le reste), schéma des access pattern--->
+
 <h2 id="final-advice">Final advice</h2>
 <p>Participate to <a href="https://www.openhackathons.org/s/">hackathons</a>! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the <a href="https://www.cines.fr/">CINES website</a> for AMD hackathons, and the <a href="http://www.idris.fr/">Idris website</a> for Nvidia hackathons.</p>
 <h2 id="special-thanks">Special thanks</h2>
