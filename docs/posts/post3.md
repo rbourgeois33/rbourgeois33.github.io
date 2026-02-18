@@ -102,7 +102,7 @@ it still does not compile, for the exact same reason! `A<M>` is not a fully expl
 
 **You need to add `.template` to all calls to template member functions of a template class in a context where the class is not fully explicited.**
 
-### What does virtual means?
+### How do virtual functions behave ?
 
 Let's consider the following code:
 ```cpp
@@ -171,16 +171,64 @@ This program prints
 I'm a person!
 I'm a person and also a student!
 ```
-[See it on compiler explorer](https://godbolt.org/z/ffbr5r1M4). The `virtual` keyword in front of the base class `Person`'s `what_am_I` definition means that it will provide an interface (function name `what_am_I`, return type `void` and input types `None`) as well as a default implementation to all its derived classes. `Student` is free to override this default behavior. It provide its own implementation of `what_am_I` with the keyword `override`. Therefore all calls to a `Person`'s `what_am_I` will link at runtime with its deepest version applicable of `what_am_I`. In particular, even if a `Student` is downcasted to a `Person` by reference like in `what_is`, `p.what_am_I` will resolve to `Student::what_am_I`.
+[See it on compiler explorer](https://godbolt.org/z/ffbr5r1M4). The `virtual` keyword in front of the base class `Person`'s `what_am_I` definition means that it will provide an interface (function name `what_am_I`, return type `void` and input types `None`) as well as a default implementation to all its derived classes. `Student` is free to override this default behavior. It provide its own implementation of `what_am_I` with the keyword `override`. Therefore all calls to a `Person`'s `what_am_I` will link at runtime with its closest version applicable of `what_am_I`. In particular, even if a `Student` is downcasted to a `Person` by reference like in `what_is`, `p.what_am_I` will resolve to `Student::what_am_I`.
 
 **Note:** The version with `virtual` is not more or less correct than the original one, it just means something different.
 
-**Understand the `virtual` to finely control member function calls in object hierarchies.**
+**Using the `virtual` keyword on a base class function ensures that when the function is overridden in a derived class, any calls to it are dynamically resolved to the derived class’s implementation. Even if you derived object was casted by reference to a base object !**
 
 
 See Item 34 of [[S. Meyer, 2005]](#1) for more on virtual functions. In Item 36, the author tells us to **never** redifine an inherited non-virtual function. While I strongly, agree with this advice, you, like me, may have to work in a code-base where this rule is already violated.
 
 
+## How can the compiler make Curiously Recurring Template Pattern (CRTP) work ?
+In this section, I will try to explain *how* CRTP works, but not when you should or shouldn't use it. Indeed, this is a questions that I'm still unsure about. First, let's look at an example of CRTP:
+
+```cpp
+template<typename Derived>
+struct Animal{
+    Animal() { static_cast<Derived*>(this)->make_noise();}
+};
+
+struct Dog : public Animal<Dog>{
+    void make_noise(){
+        std::cout<<"Woof"<<std::endl;
+    }
+};
+
+int main(){
+    Dog d;
+    return 0;
+}
+```
+
+This program compiles outputs `Woof` (see in on [compiler explorer](https://godbolt.org/z/TvYvM56z7)). It look like the Base class `Animal` has inherited `Dog`'s method. Let's dive into this insanity.
+
+ First, we declare a template class `Animal<Derived>` that is templated by `Derived`, the type that we intent to set as the `Animal`'s own Derived class: `Dog`. But at that point, the compiler has no idea what `Derived` will be. In the default constructor, we call `static_cast<Derived*>(this)->make_noise()`. In english, this means: don't worry buddy, you will be castable as a `Derived` and `Derived` will implement `make_noise()`.
+
+Then, we declare `Dog` that derives from `Animal<Dog>` (so, technically, himself !). And, as promessed to the compiler, we give `Dog` a `make_noise()` function. 
+
+In the main, we create a `Dog`, which triggers `Animal`'s default constructor, which calls `Dog::make_noise()`.
+
+All of this is possible because **dependent expressions are not fully checked until instantiation**. When the compiler see `struct Dog : public Animal<Dog>`, it instanciates:
+
+```cpp
+struct Animal_Dog{
+    Animal_Dog() { static_cast<Dog*>(this)->make_noise();}
+};
+```
+
+And `Dog` is therefore:
+
+```cpp
+struct Dog : public Animal_Dog{
+    void make_noise(){
+        std::cout<<"Woof"<<std::endl;
+    }
+};
+```
+
+Note how if we were to create `Cat`, it would not derive from the same base class, but `Animal_Cat`. This is counter-intuitive, and prevents you from making a collection of different `Animal`'s !
 ## References
 
 <a id="1">[S. Meyer, 2005]</a> Effective C++: 55 Specific Ways to Improve Your Programs and Designs. [PDF](https://dl.e-bookfa.ir/freebooks/Effective%20C++,%203rd%20Edition%20by%20Scott%20Meyers%20%28e-bookfa.ir%29.pdf). (Thanks Adrien for sharing !)
