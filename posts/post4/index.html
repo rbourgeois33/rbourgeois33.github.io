@@ -216,17 +216,19 @@
 <p><strong>Note:</strong> I will not cover the dual-GCD design of the MI250X nor the MI300A APU, as neither appears to be continued in future AMD server GPU releases.</p>
 <p><strong>Note:</strong> From now, I will use the terminology <em>AMD GPUs</em> or <em>Nvidia GPUs</em>, omitting the fact that I only talk about recent server models.</p>
 <h2 id="1-memory-hierarchy">1. Memory hierarchy</h2>
-<p>Nvidia GPU hardware hierarchy:</p>
+<p>Let's start by looking at Nvidia GPU hardware hierarchy:</p>
 <p><img alt="alt text" src="../image-32.png" /></p>
 <p><strong>Figure 1:</strong> Hardware design of an Nvidia GPU. Credits: <a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">Introduction to CUDA Programming and Performance Optimization</a>.</p>
+<p>We can see that:</p>
 <ul>
 <li>An Nvidia GPU is an aggregation of SMs.</li>
 <li>Each SM has its own L1 cache, accessible only by that SM.</li>
 <li>All SMs share the same L2 cache and DRAM.</li>
 </ul>
-<p>AMD MI350X GPU block diagram:</p>
+<p>On the other hand, here is the AMD MI350X GPU block diagram:</p>
 <p><img alt="alt text" src="../image-33.png" /></p>
 <p><strong>Figure 2:</strong> Block diagram of an AMD MI350X GPU. Credits: AMD, Advancing AI 2025.</p>
+<p>We observe:</p>
 <ul>
 <li>An AMD GPU is an aggregation of CUs.</li>
 <li>Each CU has its own L1 cache, accessible only by that CU.</li>
