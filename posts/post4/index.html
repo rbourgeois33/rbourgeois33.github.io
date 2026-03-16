@@ -74,11 +74,9 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#4-memory-access-granularity">4. Memory access granularity</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#5-wip-amd-matrix-cores-vs-nvidias-tensor-cores">5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores</a>
+    <li class="toctree-l2"><a class="reference internal" href="#5-conclusion">5. Conclusion</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#6-conclusion">6. Conclusion</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#7-bonus-trusts-context">7. Bonus: TRUST's context</a>
+    <li class="toctree-l2"><a class="reference internal" href="#6-bonus-trusts-context">6. Bonus: TRUST's context</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#special-thanks-to">Special thanks to:</a>
     </li>
@@ -113,7 +111,7 @@
               
                 <h1 id="architectural-differences-between-amd-and-nvidia-recent-server-gpus">Architectural differences between AMD and Nvidia recent server GPUs</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a>!</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 16, 2026 14:25:04 UTC"><span class="timeago" datetime="2026-03-16T14:25:04+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 16, 2026 14:25:04 UTC">2026-03-16</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 16, 2026 16:48:17 UTC"><span class="timeago" datetime="2026-03-16T16:48:17+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 16, 2026 16:48:17 UTC">2026-03-16</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="motivations">Motivations</h3>
@@ -248,7 +246,7 @@
 <p>On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU below:</p>
 <p><img alt="alt text" src="../image-34.png" /></p>
 <p><strong>Figure 3:</strong> CDNA3 Compute Unit. Credit: <a href="https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf">CDNA 3 whitepaper</a>.</p>
-<p>The key consequence is that <strong>on AMD GPUs, unused LDS remains idle during computation.</strong> As noted by <a href="https://dl.acm.org/doi/pdf/10.1145/3466752.3480105">Kotra et al. 2021 (AMD)</a>:</p>
+<p>The key consequence is that <strong>on AMD GPUs, unused LDS remains idle during computation.</strong> As noted by <a href="https://dl.acm.org/doi/pdf/10.1145/3466752.3480105">Kotra et al. 2021 (AMD Research)</a>:</p>
 <blockquote>
 <p>GPU's instruction cache (I-cache) and Local Data Share (LDS) scratchpad memory are under-utilized in many applications.</p>
 </blockquote>
@@ -264,15 +262,16 @@
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#minimize-redundant-kernel-level-memory-requests-coalescing-accesses">my first blog post</a>, I explain that on Nvidia GPUs you should organize your data and iteration pattern so that threads of the same warp access from the fewest sectors possible. Nvidia's sectors are the smallest chunks of memory that can be read from L2 to the SM and are 32 bytes long. Interestingly, a sector <strong>is not</strong> a cache-line. Sectors are 32 bytes wide on all Nvidia GPU models, regardless of the L1 cache line size (64/128 bytes). This is achieved by subdividing each L1 cache line into the sectors that share the line's tag, but have their individual status bit.</p>
 <p><strong>Note:</strong> If you are not familiar with caches, I recommend watching <a href="https://www.youtube.com/watch?v=wfVy85Dqiyc&amp;list=PL38NNHQLqJqYnNrTenxBvGJSPCkV9EOWk&amp;index=3">BitLemon's YouTube Playlist on CPU caches</a>. You will understand what write-through (L1) and write-back (Nvidia L2) caches are, and what the status bit is.</p>
 <p>AMD does not document sectoring behavior. Therefore, the memory access granularity from L2 to the SM is likely equal to the L1 cache line size i.e. 64/128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. <strong>Avoiding uncoalesced accesses is more important and more rewarding on AMD than on Nvidia.</strong></p>
-<h2 id="5-wip-amd-matrix-cores-vs-nvidias-tensor-cores">5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores</h2>
-<h2 id="6-conclusion">6. Conclusion</h2>
+<!-- ## 5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores -->
+
+<h2 id="5-conclusion">5. Conclusion</h2>
 <p>In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:</p>
 <ul>
 <li>Unused LDS storage does not perform caching on AMD GPUs,</li>
 <li>AMD's wavefronts and memory access granularity are larger than on Nvidia.</li>
 </ul>
 <p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong></p>
-<h2 id="7-bonus-trusts-context">7. Bonus: TRUST's context</h2>
+<h2 id="6-bonus-trusts-context">6. Bonus: TRUST's context</h2>
 <p>I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine <em>Alice Recoque</em>, which will be built with AMD GPUs, we are getting very serious about performance on them. </p>
 <p>Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS storage being unused by default.</p>
 <p>One good example is the variable performance gains I got from optimizing memory coalescing by working on the data layout on the GPU. This yields variable performance gains across GPUs:</p>
