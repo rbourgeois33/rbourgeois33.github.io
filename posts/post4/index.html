@@ -113,6 +113,8 @@
               
                 <h1 id="architectural-differences-between-amd-and-nvidia-recent-server-gpus">Architectural differences between AMD and Nvidia recent server GPUs</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a>!</p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="February 18, 2026 17:38:52 UTC"><span class="timeago" datetime="2026-02-18T17:38:52+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="February 18, 2026 17:38:52 UTC">2026-02-18</span></em>.<br />
+<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&amp;label=Visits" /></p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="motivations">Motivations</h3>
 <p>The goal of this article is to give a bird's-eye view of the principal architectural differences between recent AMD and Nvidia server GPUs and their implications on:</p>
@@ -279,7 +281,7 @@
 <li>-17% runtime on an AMD MI300A APU,</li>
 <li>-42% runtime on an AMD MI250X.</li>
 </ul>
-<p>These are consistent with our observations, with the MI250X being the GPU with the smallest caches of the three. It also shows that with careful programming, any workload can be ran very effectively on AMD GPUs. Now, I think that our next move should be to make use of LDS at scale on our expensive kernels. If you have any experience using LDS/shared-memory to optimize sparse workloads, please reach out !</p>
+<p>These are consistent with our observations, with the MI250X being the GPU with the smallest caches of the three. It also shows that with careful programming, any workload can be ran very effectively on AMD GPUs. Now, I think that our next move should be to make use of LDS at scale on our expensive kernels. If you have any experience using LDS/shared-memory to optimize sparse workloads, please reach out!</p>
 <h2 id="special-thanks-to">Special thanks to:</h2>
 <ul>
 <li>You, for reading !</li>
