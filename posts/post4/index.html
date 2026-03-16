@@ -68,7 +68,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#1-memory-hierarchy">1. Memory hierarchy</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#2-lds-storage-vs-shared-memory">2. LDS storage vs. shared memory</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2-lds-vs-shared-memory">2. LDS vs. shared memory</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3-warpwavefront-size">3. Warp/wavefront size</a>
     </li>
@@ -241,7 +241,7 @@
 <li>All XCDs share the same L3 "Infinity Cache" and DRAM.</li>
 </ul>
 <p>The key difference is the additional XCD grouping and the corresponding L2/L3 split. Comparing AMD and Nvidia solely on L2 cache size is therefore misleading. Without workload-specific benchmarking, it is hard to declare one design better than the other. L1 and LDS/shared memory, however, occupy the same place in the hierarchy for both vendors. Those are worth examining closely.</p>
-<h2 id="2-lds-storage-vs-shared-memory">2. LDS storage vs. shared memory</h2>
+<h2 id="2-lds-vs-shared-memory">2. LDS vs. shared memory</h2>
 <p>On Nvidia GPUs, L1 cache and shared memory share the same physical hardware on the SM. Allocating shared memory reduces the available L1 cache. Whatever is not reserved as shared memory is used as cache by default.</p>
 <p>On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU below:</p>
 <p><img alt="alt text" src="../image-34.png" /></p>
@@ -254,7 +254,7 @@
 <blockquote>
 <p>Don't forget about the Local Data Share (LDS). If you need caching, do not expect the GPU to do it for you — even if it partially works, you are likely leaving performance on the table versus using LDS explicitly.</p>
 </blockquote>
-<p>The conclusion is that <strong>using LDS storage / shared memory is more important and more rewarding on AMD than on Nvidia.</strong></p>
+<p>The conclusion is that <strong>using LDS / shared memory is more important and more rewarding on AMD than on Nvidia.</strong></p>
 <h2 id="3-warpwavefront-size">3. Warp/wavefront size</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence">my first blog post</a>, I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.</p>
 <p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. As a result, poor vectorization can hinder performance more than on Nvidia GPUs. <strong>Avoiding intra-warp thread divergence is more important and more rewarding on AMD than on Nvidia.</strong></p>
@@ -267,20 +267,21 @@
 <h2 id="5-conclusion">5. Conclusion</h2>
 <p>In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:</p>
 <ul>
-<li>Unused LDS storage does not perform caching on AMD GPUs,</li>
+<li>Unused LDS does not perform caching on AMD GPUs,</li>
 <li>AMD's wavefronts and memory access granularity are larger than on Nvidia.</li>
 </ul>
-<p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong></p>
+<p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong> </p>
+<p>The good news is that these optimizations are portable: using shared memory on Nvidia is less critical than LDS on AMD, but it is very often better than letting the L1 cache do the work, since shared memory bypasses some cache mechanisms that have a cost. The same goes for efforts towards better memory coalescing and instruction alignment. So just do the optimizations!</p>
 <h2 id="6-bonus-trusts-context">6. Bonus: TRUST's context</h2>
 <p>I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine <em>Alice Recoque</em>, which will be built with AMD GPUs, we are getting very serious about performance on them. </p>
-<p>Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS storage being unused by default.</p>
+<p>Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS being unused by default.</p>
 <p>One good example is the variable performance gains I got from optimizing memory coalescing by working on the data layout on the GPU. This yields variable performance gains across GPUs:</p>
 <ul>
 <li>-12% runtime on an Nvidia Ada RTX 6000,</li>
 <li>-17% runtime on an AMD MI300A APU,</li>
 <li>-42% runtime on an AMD MI250X.</li>
 </ul>
-<p>These are consistent with our observations, with the MI250X being the GPU with the smallest caches of the three. It also shows that with careful programming, any workload can be ran very effectively on AMD GPUs. Now, I think that our next move should be to make use of LDS at scale on our expensive kernels. If you have any experience using LDS/shared-memory to optimize sparse workloads, please reach out!</p>
+<p>These are consistent with our observations, with the MI250X being the GPU with the smallest caches of the three. It also shows that with careful programming, any workload can be ran very effectively on AMD GPUs. Now, I think that our next move should be to make use of LDS at scale on our expensive kernels. If you have any experience using LDS / shared memory to optimize sparse workloads, please reach out!</p>
 <h2 id="special-thanks-to">Special thanks to:</h2>
 <ul>
 <li>You, for reading !</li>
