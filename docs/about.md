@@ -5,16 +5,15 @@ Hello world ! This is my first blog. I'm Rémi Bourgeois, PhD. I am a researcher
 
 I like to write about what I do as it forces me to formalize my idea, and because I think it might help others. Citing [Lorenzo Miaggi](https://mlwithouttears.com/about/) *"Blogging is one of the most effective ways I learn. If I don’t write, I don’t really understand."*
 
-My research / engineering interests include:
+My interests include:
 
-- GPU kernel / application optimization.
-- Using / picking GPU-enabled linear algebra libraries wisely.
-- Finite volume methods, MHD convection see [my PhD thesis on the subject !](https://theses.hal.science/tel-04732720/)
-- Continuous integration (gitlab / github).
-- Communication avoiding algorithms.
-- Experimenting with reduced precision.
+- GPU portable porting with Kokkos,
+- GPU kernel profiling (nsight/rocprof compute) & optimization
+- Low level GPU hardware / software interactions, figuring out vendor-specific hardware differences
+- Application-level profiling (nsight/rocprof systems) & optimization
+- Reaching out and mentoring
 
-The opinions expressed here are only mine, and do not reflect the opinions of CEA. Moreover, I am very prone to errors and quick conclusion. If you spot one, feel free to reach and discuss !
+The opinions expressed here are only mine, and do not reflect the opinions of CEA. 
 
 ### Links
 

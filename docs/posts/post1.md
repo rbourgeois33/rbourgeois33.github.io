@@ -13,8 +13,9 @@ I was hired by CEA to join the porting effort of the the legacy code [TRUST](htt
 
 The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
 
-- A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
+- A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/commit/c6aa7d871a019c9258f1cad6bc9bc84954865b35) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/commit/7ac3ec98ba17a187e84c828c62b035ce66004885) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
+- A 10% speedup on a sparse SPMV kernel from TRUST.
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
 I will not go over what I consider to be *advanced* optimization techniques such as:
@@ -345,7 +346,7 @@ The *"Source Counter"* section also detects uncoalesced global memory accesses, 
 #### Advices on data layout
 These observations should make you want to think about layouts when dealing with data that is two-dimensional, or more. What layout should you choose? LayoutLeft (column-major) or LayoutRight (row-major)? The answer depends on how you parallelized your kernel. In particular,
 
-- **You should organize your data so that neighboring threads (within a warp) are performing memory accesses on coalescing data**. This allows to reduce the amount of global memory requests, as seen in the previous section.
+- **Organize your data / iteration pattern so that threads of the same warp access from the fewest sectors possible**. This allows to reduce the amount of global memory requests, as seen in the previous section.
 
 Let's look at two ways to practically apply this advice:
 
