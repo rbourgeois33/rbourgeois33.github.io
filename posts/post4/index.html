@@ -74,9 +74,13 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#4-memory-access-granularity">4. Memory access granularity</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#5-conclusion">5. Conclusion</a>
+    <li class="toctree-l2"><a class="reference internal" href="#5-wip-amd-matrix-cores-vs-nvidias-tensor-cores">5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
+    <li class="toctree-l2"><a class="reference internal" href="#6-conclusion">6. Conclusion</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7-bonus-trusts-context">7. Bonus: TRUST's context</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#special-thanks-to">Special thanks to:</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#comments">Comments</a>
     </li>
@@ -116,7 +120,7 @@
 <li>performance we might observe when switching vendors,</li>
 <li>how we should program them.</li>
 </ul>
-<p>It should be particularly useful to people who are comfortable with Nvidia's architecture and profiling tools and plan to work with AMD. Indeed, I believe that understanding the GPU architecture is a prerequisite to understanding the kernel profilers. In particular, I hope this post helps readers getting one of the <em>advanced</em> pre-requisite of the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html#performance-profiling-on-amd-gpus-part-1-foundations">Performance Profiling on AMD GPUs guide</a></p>
+<p>It should be particularly useful to people who are comfortable with Nvidia's architecture and profiling tools and plan to work with AMD. Indeed, I believe that understanding the GPU architecture is a prerequisite to understanding the kernel profilers. In particular, I hope this post helps readers getting one of the <em>advanced</em> pre-requisite of the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html#performance-profiling-on-amd-gpus-part-1-foundations">Performance Profiling on AMD GPUs guide</a>:</p>
 <blockquote>
 <p>The reader understands the architectural differences between AMD GPUs and competing hardware, including variations in memory hierarchy, compute units, and execution models.</p>
 </blockquote>
@@ -253,23 +257,32 @@
 <p>The conclusion is that <strong>using LDS storage / shared memory is more important and more rewarding on AMD than on Nvidia.</strong></p>
 <h2 id="3-warpwavefront-size">3. Warp/wavefront size</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence">my first blog post</a>, I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.</p>
-<p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. As a result, poor vectorization can hinder performance more than on Nvidia GPUs. On the other hand, this means that AMD wavefronts can issue more instructions per cycle than Nvidia warps. <strong>Avoiding intra-warp thread divergence is more important and more rewarding on AMD than on Nvidia.</strong></p>
+<p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. As a result, poor vectorization can hinder performance more than on Nvidia GPUs. <strong>Avoiding intra-warp thread divergence is more important and more rewarding on AMD than on Nvidia.</strong></p>
 <h2 id="4-memory-access-granularity">4. Memory access granularity</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#minimize-redundant-kernel-level-memory-requests-coalescing-accesses">my first blog post</a>, I explain that on Nvidia GPUs you should organize your data and iteration pattern so that threads of the same warp access from the fewest sectors possible. Nvidia's sectors are the smallest chunks of memory that can be read from L2 to the SM and are 32 bytes long. Interestingly, a sector <strong>is not</strong> a cache-line. Sectors are 32 bytes wide on all Nvidia GPU models, regardless of the L1 cache line size (64/128 bytes). This is achieved by subdividing each L1 cache line into the sectors that share the line's tag, but have their individual status bit.</p>
 <p><strong>Note:</strong> If you are not familiar with caches, I recommend watching <a href="https://www.youtube.com/watch?v=wfVy85Dqiyc&amp;list=PL38NNHQLqJqYnNrTenxBvGJSPCkV9EOWk&amp;index=3">BitLemon's YouTube Playlist on CPU caches</a>. You will understand what write-through (L1) and write-back (Nvidia L2) caches are, and what the status bit is.</p>
 <p>AMD does not document sectoring behavior. Therefore, the memory access granularity from L2 to the SM is likely equal to the L1 cache line size i.e. 64/128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. <strong>Avoiding uncoalesced accesses is more important and more rewarding on AMD than on Nvidia.</strong></p>
-<h2 id="5-conclusion">5. Conclusion</h2>
+<h2 id="5-wip-amd-matrix-cores-vs-nvidias-tensor-cores">5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores</h2>
+<h2 id="6-conclusion">6. Conclusion</h2>
 <p>In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:</p>
 <ul>
 <li>Unused LDS storage does not perform caching on AMD GPUs,</li>
 <li>AMD's wavefronts and memory access granularity are larger than on Nvidia.</li>
 </ul>
 <p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong></p>
-<p>Thanks for reading !</p>
-<h2 id="special-thanks">Special thanks</h2>
-<p>Special thanks to:</p>
+<h2 id="7-bonus-trusts-context">7. Bonus: TRUST's context</h2>
+<p>I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine <em>Alice Recoque</em>, which will be built with AMD GPUs, we are getting very serious about performance on them. Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's strong preference for aligned accesses, small L1 caches and LDS storage being unused by default.</p>
+<p>One good example is the variable performance gains I got from optimizing memory coalescing by working on the data layout on the GPU. This yields variable performance gains across GPUs:</p>
 <ul>
-<li>vector.sys for the valuable insights shared on the AMD developer Discord.</li>
+<li>-12% runtime on an Nvidia Ada RTX 6000,</li>
+<li>-17% runtime on an AMD MI300A APU,</li>
+<li>-42% runtime on an AMD MI250X.</li>
+</ul>
+<p>These are consistent with our observations, with the MI250X being the GPU with the smallest caches of the three. Now, I think that our next move should be to make use of LDS at scale on our expensive kernels. If you have any experience using shared memory to optimize sparse workloads, please reach out !</p>
+<h2 id="special-thanks-to">Special thanks to:</h2>
+<ul>
+<li>You, for reading !</li>
+<li>vector.sys for the valuable insights shared on the AMD developer Discord, as well as the review and precisions on HIP's hardware implementation of wavefronts.</li>
 <li>Aaron Jarmusch (Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.</li>
 </ul>
 <h2 id="comments">Comments</h2>
