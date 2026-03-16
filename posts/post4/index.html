@@ -70,7 +70,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#2-lds-vs-shared-memory">2. LDS vs. shared memory</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#3-warpwavefront-size">3. Warp/wavefront size</a>
+    <li class="toctree-l2"><a class="reference internal" href="#3-warp-wavefront-size">3. Warp / wavefront size</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#4-memory-access-granularity">4. Memory access granularity</a>
     </li>
@@ -111,26 +111,27 @@
               
                 <h1 id="architectural-differences-between-amd-and-nvidia-recent-server-gpus">Architectural differences between AMD and Nvidia recent server GPUs</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a>!</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 16, 2026 16:48:17 UTC"><span class="timeago" datetime="2026-03-16T16:48:17+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 16, 2026 16:48:17 UTC">2026-03-16</span></em>.<br />
-<img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&amp;label=Visits" /></p>
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 16, 2026 16:48:17 UTC"><span class="timeago" datetime="2026-03-16T16:48:17+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 16, 2026 16:48:17 UTC">2026-03-16</span></em>.  </p>
+<!---![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&label=Visits) --->
+
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="motivations">Motivations</h3>
 <p>The goal of this article is to give a bird's-eye view of the principal architectural differences between recent AMD and Nvidia server GPUs and their implications on:</p>
 <ul>
-<li>performance we might observe when switching vendors,</li>
+<li>performance discrepancies we might observe when switching vendors,</li>
 <li>how we should program them.</li>
 </ul>
-<p>It should be particularly useful to people who are comfortable with Nvidia's architecture and profiling tools and plan to work with AMD. Indeed, I believe that understanding the GPU architecture is a prerequisite to understanding the kernel profilers. In particular, I hope this post helps readers getting one of the <em>advanced</em> pre-requisite of the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html#performance-profiling-on-amd-gpus-part-1-foundations">Performance Profiling on AMD GPUs guide</a>:</p>
+<p>It should be particularly useful to people who are comfortable with Nvidia's architecture and profiling tools and plan to work with AMD. Indeed, I believe that understanding GPU architectures is a prerequisite to understanding the kernel profiler outputs. In particular, I hope this post helps readers getting one of the <em>advanced</em> pre-requisite of the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html#performance-profiling-on-amd-gpus-part-1-foundations">Performance Profiling on AMD GPUs guide</a>:</p>
 <blockquote>
 <p>The reader understands the architectural differences between AMD GPUs and competing hardware, including variations in memory hierarchy, compute units, and execution models.</p>
 </blockquote>
-<p>Please let me know if you think something is missing! For now, I did not cover Matrix/Tensor cores as I mainly focus on sparse HPC in my professional activity. But this might come up.</p>
+<p>Please let me know if you think something is missing! For now, I did not cover Matrix/Tensor cores as I mainly focus on sparse HPC in my professional activity.</p>
 <h3 id="nomenclature">Nomenclature</h3>
-<p>When switching between AMD and Nvidia specs, it is easy to get confused by nomenclature. Here are the main correspondences relevant to this article:</p>
+<p>When switching between AMD and Nvidia GPUs specifications, it is easy to get confused by nomenclature. Here are the main correspondences relevant to this article:</p>
 <ul>
 <li>AMD's Compute Units (CU) / Nvidia's Streaming Multiprocessors (SM): The "cores" of the GPU, where compute happens.</li>
 <li>AMD's Local Data Share (LDS) / Nvidia's shared memory: Programmable cache located on the CU/SM.</li>
-<li>AMD's wavefront / Nvidia's warp: Groups of threads executed on the CU/SM.</li>
+<li>AMD's wavefront / Nvidia's warp: Groups of threads programmed through HIP/CUDA and executed on the CUs/SMs.</li>
 </ul>
 <h3 id="some-specifications">Some specifications</h3>
 <table>
@@ -150,7 +151,7 @@
 <tr>
 <td><a href="https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf">A100 (2020)</a></td>
 <td>40</td>
-<td>128</td>
+<td>108</td>
 <td>1.5</td>
 <td>192 (combined)</td>
 <td>40</td>
@@ -220,7 +221,7 @@
 <p><strong>Note:</strong> I will not cover the dual-GCD design of the MI250X nor the MI300A APU, as neither appears to be continued in future AMD server GPU releases.</p>
 <p><strong>Note:</strong> From now, I will use the terminology <em>AMD GPUs</em> or <em>Nvidia GPUs</em>, omitting the fact that I only talk about recent server models.</p>
 <h2 id="1-memory-hierarchy">1. Memory hierarchy</h2>
-<p>Let's start by looking at Nvidia GPU hardware hierarchy:</p>
+<p>Let's start by looking at the Nvidia GPUs hardware hierarchy:</p>
 <p><img alt="alt text" src="../image-32.png" /></p>
 <p><strong>Figure 1:</strong> Hardware design of an Nvidia GPU. Credits: <a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">Introduction to CUDA Programming and Performance Optimization</a>.</p>
 <p>We can see that:</p>
@@ -231,8 +232,8 @@
 </ul>
 <p>On the other hand, here is the AMD MI350X GPU block diagram:</p>
 <p><img alt="alt text" src="../image-33.png" /></p>
-<p><strong>Figure 2:</strong> Block diagram of an AMD MI350X GPU. Credits: AMD, Advancing AI 2025.</p>
-<p>We observe:</p>
+<p><strong>Figure 2:</strong> Block diagram of an AMD MI350X GPU, that is similar to the one of the MI300X for our present concerns. Credits: AMD, Advancing AI 2025.</p>
+<p>We observe that:</p>
 <ul>
 <li>An AMD GPU is an aggregation of CUs.</li>
 <li>Each CU has its own L1 cache, accessible only by that CU.</li>
@@ -240,22 +241,22 @@
 <li>Each XCD has one L2 cache shared among its CUs.</li>
 <li>All XCDs share the same L3 "Infinity Cache" and DRAM.</li>
 </ul>
-<p>The key difference is the additional XCD grouping and the corresponding L2/L3 split. Comparing AMD and Nvidia solely on L2 cache size is therefore misleading. Without workload-specific benchmarking, it is hard to declare one design better than the other. L1 and LDS/shared memory, however, occupy the same place in the hierarchy for both vendors. Those are worth examining closely.</p>
+<p>The key difference compared to Nvidia is the additional XCD grouping and the corresponding L2/L3 split. Comparing AMD and Nvidia solely on L2 cache size is therefore misleading. Without workload-specific benchmarking, it is hard to declare one design better than the other. L1 and LDS/shared memory, however, occupy the same place in the hierarchy for both vendors. Those are worth examining closely.</p>
 <h2 id="2-lds-vs-shared-memory">2. LDS vs. shared memory</h2>
 <p>On Nvidia GPUs, L1 cache and shared memory share the same physical hardware on the SM. Allocating shared memory reduces the available L1 cache. Whatever is not reserved as shared memory is used as cache by default.</p>
-<p>On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU below:</p>
+<p>On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU diagram below:</p>
 <p><img alt="alt text" src="../image-34.png" /></p>
 <p><strong>Figure 3:</strong> CDNA3 Compute Unit. Credit: <a href="https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf">CDNA 3 whitepaper</a>.</p>
 <p>The key consequence is that <strong>on AMD GPUs, unused LDS remains idle during computation.</strong> As noted by <a href="https://dl.acm.org/doi/pdf/10.1145/3466752.3480105">Kotra et al. 2021 (AMD Research)</a>:</p>
 <blockquote>
 <p>GPU's instruction cache (I-cache) and Local Data Share (LDS) scratchpad memory are under-utilized in many applications.</p>
 </blockquote>
-<p>This under-utilization frequently hurts performance when porting code from Nvidia to AMD, especially when the code relies a lot on caches. The issue is reinforced by AMD's L1 cache being smaller than both the LDS and Nvidia's L1. As the <a href="https://dci.dci-gitlab.cines.fr/webextranet/porting_optimization/index.html#guidelines">CINES porting and optimization guide</a> puts it:</p>
+<p>We can expect this under-utilization to hurt performance when porting code from Nvidia to AMD particularly for workloads that heavily depend on caches. The issue is reinforced by AMD's L1 cache being smaller than both the LDS and Nvidia's L1. As the <a href="https://dci.dci-gitlab.cines.fr/webextranet/porting_optimization/index.html#guidelines">CINES porting and optimization guide</a> puts it:</p>
 <blockquote>
 <p>Don't forget about the Local Data Share (LDS). If you need caching, do not expect the GPU to do it for you — even if it partially works, you are likely leaving performance on the table versus using LDS explicitly.</p>
 </blockquote>
 <p>The conclusion is that <strong>using LDS / shared memory is more important and more rewarding on AMD than on Nvidia.</strong></p>
-<h2 id="3-warpwavefront-size">3. Warp/wavefront size</h2>
+<h2 id="3-warp-wavefront-size">3. Warp / wavefront size</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence">my first blog post</a>, I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.</p>
 <p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. As a result, poor vectorization can hinder performance more than on Nvidia GPUs. <strong>Avoiding intra-warp thread divergence is more important and more rewarding on AMD than on Nvidia.</strong></p>
 <h2 id="4-memory-access-granularity">4. Memory access granularity</h2>
@@ -268,10 +269,10 @@
 <p>In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:</p>
 <ul>
 <li>Unused LDS does not perform caching on AMD GPUs,</li>
-<li>AMD's wavefronts and memory access granularity are larger than on Nvidia.</li>
+<li>AMD's wavefronts and memory access granularity are larger than on Nvidia GPUs.</li>
 </ul>
-<p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong> </p>
-<p>The good news is that these optimizations are portable: using shared memory on Nvidia is less critical than LDS on AMD, but it is very often better than letting the L1 cache do the work, since shared memory bypasses some cache mechanisms that have a cost. The same goes for efforts towards better memory coalescing and instruction alignment. So just do the optimizations!</p>
+<p>Therefore, programming carefully to fully utilize the LDS, aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong> </p>
+<p>The good news is that these optimizations are portable: using shared memory on Nvidia is less critical than LDS on AMD, but it is very often better than letting the L1 cache do the work, since shared memory bypasses some cache mechanisms that come with their own costs. The same goes for efforts towards better memory coalescing and instruction alignment. So just do the optimizations!</p>
 <h2 id="6-bonus-trusts-context">6. Bonus: TRUST's context</h2>
 <p>I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine <em>Alice Recoque</em>, which will be built with AMD GPUs, we are getting very serious about performance on them. </p>
 <p>Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS being unused by default.</p>
