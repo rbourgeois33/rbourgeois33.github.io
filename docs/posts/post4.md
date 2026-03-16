@@ -90,7 +90,7 @@ On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU 
 
 **Figure 3:** CDNA3 Compute Unit. Credit: [CDNA 3 whitepaper](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf).
 
-The key consequence is that **on AMD GPUs, unused LDS remains idle during computation.** As noted by [Kotra et al. 2021 (AMD)](https://dl.acm.org/doi/pdf/10.1145/3466752.3480105):
+The key consequence is that **on AMD GPUs, unused LDS remains idle during computation.** As noted by [Kotra et al. 2021 (AMD Research)](https://dl.acm.org/doi/pdf/10.1145/3466752.3480105):
 
 > GPU's instruction cache (I-cache) and Local Data Share (LDS) scratchpad memory are under-utilized in many applications.
 
@@ -114,9 +114,9 @@ In [my first blog post](https://rbourgeois33.github.io./posts/post1/#minimize-re
 
 AMD does not document sectoring behavior. Therefore, the memory access granularity from L2 to the SM is likely equal to the L1 cache line size i.e. 64/128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. **Avoiding uncoalesced accesses is more important and more rewarding on AMD than on Nvidia.**
 
-## 5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores
+<!-- ## 5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores -->
 
-## 6. Conclusion
+## 5. Conclusion
 In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:
 
 - Unused LDS storage does not perform caching on AMD GPUs,
@@ -125,10 +125,10 @@ In this post, we briefly went over several architectural differences between AMD
 
 Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is **more important and more rewarding on AMD than on Nvidia.**
 
-## 7. Bonus: TRUST's context
+## 6. Bonus: TRUST's context
 I work on the [TRUST platform](https://cea-trust-platform.github.io/), a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine *Alice Recoque*, which will be built with AMD GPUs, we are getting very serious about performance on them. 
 
-Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's strong preference for aligned accesses, small L1 caches and LDS storage being unused by default.
+Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS storage being unused by default.
 
 One good example is the variable performance gains I got from optimizing memory coalescing by working on the data layout on the GPU. This yields variable performance gains across GPUs:
 
@@ -142,7 +142,7 @@ These are consistent with our observations, with the MI250X being the GPU with t
 
 - You, for reading !
 - vector.sys for the valuable insights shared on the AMD developer Discord, as well as the review and precisions on HIP's hardware implementation of wavefronts.
-- Aaron Jarmusch (Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.
+- Aaron Jarmusch (PhD student at the Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.
 
 ## Comments
 <script src="https://giscus.app/client.js"
