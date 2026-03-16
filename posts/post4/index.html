@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Post4 - Rémi Bourgeois's blog</title>
+    <title>Architectural differences between AMD and Nvidia recent server GPUs - Rémi Bourgeois's blog</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Post4";
+        var mkdocs_page_name = "Architectural differences between AMD and Nvidia recent server GPUs";
         var mkdocs_page_input_path = "posts/post4.md";
         var mkdocs_page_url = null;
       </script>
@@ -49,10 +49,38 @@
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Posts</span></p>
-              <ul>
+              <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../post1/">Five basic performance advice for porting kernels to the GPU</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Architectural differences between AMD and Nvidia recent server GPUs</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#0-introduction">0. Introduction</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#motivations">Motivations</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#nomenclature">Nomenclature</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#some-specifications">Some specifications</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#1-memory-hierarchy">1. Memory hierarchy</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-lds-storage-vs-shared-memory">2. LDS storage vs. shared memory</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-warpwavefront-size">3. Warp/wavefront size</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-memory-access-granularity">4. Memory access granularity</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-conclusion">5. Conclusion</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#special-thanks">Special thanks</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#comments">Comments</a>
+    </li>
+    </ul>
                   </li>
               </ul>
       </div>
@@ -69,7 +97,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Post4</li>
+          <li class="breadcrumb-item">Posts</li>
+      <li class="breadcrumb-item active">Architectural differences between AMD and Nvidia recent server GPUs</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -78,17 +107,191 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <p>&lt;!----# (WIP) AMD &amp; Nvidia; different approaches to GPU architectures and their performance implications</p>
+                <h1 id="architectural-differences-between-amd-and-nvidia-recent-server-gpus">Architectural differences between AMD and Nvidia recent server GPUs</h1>
+<p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a>!</p>
+<h2 id="0-introduction">0. Introduction</h2>
+<h3 id="motivations">Motivations</h3>
+<p>The goal of this article is to give a bird's-eye view of the principal architectural differences between recent AMD and Nvidia server GPUs and their implications on:</p>
 <ul>
-<li>cache / DRAM per dollar</li>
-<li>warp size, sector size,</li>
-<li>consequence on dense vs sparse</li>
-<li>naming cuda vs. hip</li>
-<li>getting ncu info from rocm-compute</li>
+<li>performance we might observe when switching vendors,</li>
+<li>how we should program them.</li>
 </ul>
+<p>It should be particularly useful to people who are comfortable with Nvidia's architecture and profiling tools and plan to work with AMD. Indeed, I believe that understanding the GPU architecture is a prerequisite to understanding the kernel profilers. In particular, I hope this post helps readers getting one of the <em>advanced</em> pre-requisite of the <a href="https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html#performance-profiling-on-amd-gpus-part-1-foundations">Performance Profiling on AMD GPUs guide</a></p>
+<blockquote>
+<p>The reader understands the architectural differences between AMD GPUs and competing hardware, including variations in memory hierarchy, compute units, and execution models.</p>
+</blockquote>
+<p>Please let me know if you think something is missing!</p>
+<h3 id="nomenclature">Nomenclature</h3>
+<p>When switching between AMD and Nvidia specs, it is easy to get confused by nomenclature. Here are the main correspondences relevant to this article:</p>
+<ul>
+<li>AMD's Compute Units (CU) / Nvidia's Streaming Multiprocessors (SM): The "cores" of the GPU, where compute happens.</li>
+<li>AMD's Local Data Share (LDS) / Nvidia's shared memory: Programmable cache located on the CU/SM.</li>
+<li>AMD's wavefront / Nvidia's warp: Groups of threads executed on the CU/SM.</li>
+</ul>
+<h3 id="some-specifications">Some specifications</h3>
+<table>
+<thead>
+<tr>
+<th>GPU (Release)</th>
+<th>RAM <br> (GB)</th>
+<th>SM/CU <br> count</th>
+<th>BW <br> (TB/s)</th>
+<th>L1 Cache + Shared/LDS <br> per SM/CU (KB)</th>
+<th>L2 Cache <br> Total (MB)</th>
+<th>L3 Cache <br> (MB)</th>
+<th>XCD Count <br> (= L2 Count)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf">A100 (2020)</a></td>
+<td>40</td>
+<td>128</td>
+<td>1.5</td>
+<td>192 (combined)</td>
+<td>40</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td><a href="https://www.olcf.ornl.gov/wp-content/uploads/03-MemoryHierarchy.pdf">MI250X, CDNA2 (2021)</a></td>
+<td>128</td>
+<td>208</td>
+<td>3.2</td>
+<td>16 (L1) + 64 (LDS) = 80</td>
+<td>16</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td><a href="https://resources.nvidia.com/en-us-hopper-architecture/nvidia-h100-tensor-c?ncid=no-ncid">H100 (2022)</a></td>
+<td>80</td>
+<td>132</td>
+<td>3.0</td>
+<td>256 (combined)</td>
+<td>50</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td><a href="https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf">MI300X, CDNA3 (2023)</a></td>
+<td>192</td>
+<td>304</td>
+<td>5.3</td>
+<td>32 (L1) + 64 (LDS) = 96</td>
+<td>32</td>
+<td>256</td>
+<td>8</td>
+</tr>
+<tr>
+<td><a href="https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html">B200 (2024)</a></td>
+<td>180</td>
+<td>148</td>
+<td>8.0</td>
+<td>256 (combined)</td>
+<td>126</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td><a href="https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-4-architecture-whitepaper.pdf">MI350X, CDNA4 (2025)</a></td>
+<td>288</td>
+<td>256</td>
+<td>8.0</td>
+<td>32 (L1) + 160 (LDS) = 192</td>
+<td>32</td>
+<td>256</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 1:</strong> Specifications of recent AMD &amp; Nvidia server GPUs. Click GPU names for sources.</p>
+<p>A few observations from this table. AMD GPUs:</p>
+<ul>
+<li>Are released roughly one year after their Nvidia counterparts and are traditionally cheaper,</li>
+<li>have more RAM, bandwidth, and SM/CU count,</li>
+<li>have less L1 &amp; L2 cache and shared memory / LDS.</li>
+</ul>
+<p>Starting with the MI300X, AMD GPUs also have an additional L3 cache absent from Nvidia GPUs. </p>
+<p><strong>Note:</strong> I will not cover the dual-GCD design of the MI250X nor the MI300A APU, as neither appears to be continued in future AMD server GPU releases.</p>
+<p><strong>Note:</strong> From now, I will use the terminology <em>AMD GPUs</em> or <em>Nvidia GPUs</em>, omitting the fact that I only talk about recent server models.</p>
+<h2 id="1-memory-hierarchy">1. Memory hierarchy</h2>
+<p>Nvidia GPU hardware hierarchy:</p>
+<p><img alt="alt text" src="../image-32.png" /></p>
+<p><strong>Figure 1:</strong> Hardware design of an Nvidia GPU. Credits: <a href="https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/">Introduction to CUDA Programming and Performance Optimization</a>.</p>
+<ul>
+<li>An Nvidia GPU is an aggregation of SMs.</li>
+<li>Each SM has its own L1 cache, accessible only by that SM.</li>
+<li>All SMs share the same L2 cache and DRAM.</li>
+</ul>
+<p>AMD MI350X GPU block diagram:</p>
+<p><img alt="alt text" src="../image-33.png" /></p>
+<p><strong>Figure 2:</strong> Block diagram of an AMD MI350X GPU. Credits: AMD, Advancing AI 2025.</p>
+<ul>
+<li>An AMD GPU is an aggregation of CUs.</li>
+<li>Each CU has its own L1 cache, accessible only by that CU.</li>
+<li>CUs are grouped into sets of 32 called XCDs; there are 8 XCDs per GPU.</li>
+<li>Each XCD has one L2 cache shared among its CUs.</li>
+<li>All XCDs share the same L3 "Infinity Cache" and DRAM.</li>
+</ul>
+<p>The key difference is the additional XCD grouping and the corresponding L2/L3 split. Comparing AMD and Nvidia solely on L2 cache size is therefore misleading. Without workload-specific benchmarking, it is hard to declare one design better than the other. L1 and LDS/shared memory, however, occupy the same place in the hierarchy for both vendors. Those are worth examining closely.</p>
+<h2 id="2-lds-storage-vs-shared-memory">2. LDS storage vs. shared memory</h2>
+<p>On Nvidia GPUs, L1 cache and shared memory share the same physical hardware on the SM. Allocating shared memory reduces the available L1 cache. Whatever is not reserved as shared memory is used as cache by default.</p>
+<p>On AMD GPUs, LDS and L1 cache are separate pieces of hardware. See the CDNA3 CU below:</p>
+<p><img alt="alt text" src="../image-34.png" /></p>
+<p><strong>Figure 3:</strong> CDNA3 Compute Unit. Credit: <a href="https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf">CDNA 3 whitepaper</a>.</p>
+<p>The key consequence is that <strong>on AMD GPUs, unused LDS remains idle during computation.</strong> As noted by <a href="https://dl.acm.org/doi/pdf/10.1145/3466752.3480105">Kotra et al. 2021 (AMD)</a>:</p>
+<blockquote>
+<p>GPU's instruction cache (I-cache) and Local Data Share (LDS) scratchpad memory are under-utilized in many applications.</p>
+</blockquote>
+<p>This under-utilization frequently hurts performance when porting code from Nvidia to AMD, especially when the code relies a lot on caches. The issue is reinforced by AMD's L1 cache being smaller than both the LDS and Nvidia's L1. As the <a href="https://dci.dci-gitlab.cines.fr/webextranet/porting_optimization/index.html#guidelines">CINES porting and optimization guide</a> puts it:</p>
+<blockquote>
+<p>Don't forget about the Local Data Share (LDS). If you need caching, do not expect the GPU to do it for you — even if it partially works, you are likely leaving performance on the table versus using LDS explicitly.</p>
+</blockquote>
+<p>The conclusion is that <strong>using LDS storage / shared memory is more important and more rewarding on AMD than on Nvidia.</strong></p>
+<h2 id="3-warpwavefront-size">3. Warp/wavefront size</h2>
+<p>In <a href="https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence">my first blog post</a>, I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.</p>
+<p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. As a result, poor vectorization can hinder performance more than on Nvidia GPUs. On the other hand, this means that AMD wavefronts can issue more instructions per cycle than Nvidia warps. <strong>Avoiding intra-warp thread divergence is more important and more rewarding on AMD than on Nvidia.</strong></p>
+<h2 id="4-memory-access-granularity">4. Memory access granularity</h2>
+<p>In <a href="https://rbourgeois33.github.io./posts/post1/#minimize-redundant-kernel-level-memory-requests-coalescing-accesses">my first blog post</a>, I explain that on Nvidia GPUs you should organize your data and iteration pattern so that threads of the same warp access from the fewest sectors possible. Nvidia's sectors are the smallest chunks of memory that can be read from L2 to the SM and are 32 bytes long. Interestingly, a sector <strong>is not</strong> a cache-line. Sectors are 32 bytes wide on all Nvidia GPU models, regardless of the L1 cache line size (64/128 bytes). This is achieved by subdividing each L1 cache line into the sectors that share the line's tag, but have their individual status bit.</p>
+<p><strong>Note:</strong> If you are not familiar with caches, I recommend watching <a href="https://www.youtube.com/watch?v=wfVy85Dqiyc&amp;list=PL38NNHQLqJqYnNrTenxBvGJSPCkV9EOWk&amp;index=3">BitLemon's YouTube Playlist on CPU caches</a>. You will understand what write-through (L1) and write-back (Nvidia L2) caches are, and what the status bit is.</p>
+<p>AMD does not document sectoring behavior. Therefore, the memory access granularity from L2 to the SM is likely equal to the L1 cache line size i.e. 64/128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. <strong>Avoiding uncoalesced accesses is more important and more rewarding on AMD than on Nvidia.</strong></p>
+<h2 id="5-conclusion">5. Conclusion</h2>
+<p>In this post, we briefly went over several architectural differences between AMD and Nvidia server GPUs. Going from Nvidia to AMD, one should not make quick assumptions about their inner workings. In particular:</p>
+<ul>
+<li>Unused LDS storage does not perform caching on AMD GPUs,</li>
+<li>AMD's wavefronts and memory access granularity are larger than on Nvidia.</li>
+</ul>
+<p>Therefore, programming carefully to fully utilize the LDS and aligning memory accesses and instructions is <strong>more important and more rewarding on AMD than on Nvidia.</strong></p>
+<p>Thanks for reading !</p>
+<h2 id="special-thanks">Special thanks</h2>
+<p>Special thanks to:</p>
+<ul>
+<li>vector.sys for the valuable insights shared on the AMD developer Discord.</li>
+<li>Aaron Jarmusch (Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.</li>
+</ul>
+<h2 id="comments">Comments</h2>
+<script src="https://giscus.app/client.js"
+        data-repo="rbourgeois33/rbourgeois33.github.io"
+        data-repo-id="R_kgDOPmDw5g"
+        data-category="General"
+        data-category-id="DIC_kwDOPmDw5s4CvWWl"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+</script>
               
             </div>
           </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../post2/" class="btn btn-neutral float-left" title="The cost of communications"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
 
   <hr/>
 
@@ -109,6 +312,8 @@
   <div class="rst-versions" role="note" aria-label="Versions">
   <span class="rst-current-version" data-toggle="rst-current-version">
     
+    
+      <span><a href="../post2/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
   </span>

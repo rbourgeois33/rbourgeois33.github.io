@@ -166,6 +166,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../post2/">The cost of communications</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../post4/">Architectural differences between AMD and Nvidia recent server GPUs</a>
+                  </li>
               </ul>
       </div>
     </div>
@@ -495,7 +497,7 @@ void apply_kernel(Kokkos::View&lt;float**&gt; A,  Kokkos::View&lt;float**&gt; B,
 <h4 id="advices-on-data-layout">Advices on data layout</h4>
 <p>These observations should make you want to think about layouts when dealing with data that is two-dimensional, or more. What layout should you choose? LayoutLeft (column-major) or LayoutRight (row-major)? The answer depends on how you parallelized your kernel. In particular,</p>
 <ul>
-<li><strong>You should organize your data so that neighboring threads (within a warp) are performing memory accesses on coalescing data</strong>. This allows to reduce the amount of global memory requests, as seen in the previous section.</li>
+<li><strong>Organize your data / iteration pattern so that threads of the same warp access from the fewest sectors possible</strong>. This allows to reduce the amount of global memory requests, as seen in the previous section.</li>
 </ul>
 <p>Let's look at two ways to practically apply this advice:</p>
 <ul>
