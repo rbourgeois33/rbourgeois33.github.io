@@ -131,7 +131,7 @@ The good news is that these optimizations are portable. For example, using share
 ## 6. Bonus: TRUST's context
 I work on the [TRUST platform](https://cea-trust-platform.github.io/), a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine *Alice Recoque*, which will be built with AMD GPUs, we are getting very serious about performance on them. 
 
-Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, it benefits a lot from Nvidia's large default L1 caches, and suffers from AMD's stronger preference for aligned accesses, small L1 caches and LDS being unused by default.
+Historically, we have observed performance discrepancies on AMD vs. Nvidia hardware, relative to their bandwidth. Indeed, TRUST is memory-bound and relies heavily on sparse memory accesses (sparse linear algebra, unstructured meshes). Therefore, TRUST benefits from Nvidia's large default L1 caches, and struggles with AMD's stronger preference for aligned accesses, smaller L1 caches and LDS being unused by default.
 
 One good example is the variable performance gains I got from optimizing memory coalescing by working on the data layout on the GPU. This yields variable performance gains across GPUs:
 
@@ -145,7 +145,7 @@ These are consistent with our observations, with the MI250X being the GPU with t
 
 - You, for reading !
 - vector.sys for the valuable insights shared on the AMD developer Discord, as well as the review and precisions on HIP's hardware implementation of wavefronts.
-- Aaron Jarmusch (PhD student at the Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.
+<!--- Aaron Jarmusch (PhD student at the Computational Research and Programming Lab, University of Delaware) for our discussion on Nvidia's sectors.-->
 
 ## Comments
 <script src="https://giscus.app/client.js"
