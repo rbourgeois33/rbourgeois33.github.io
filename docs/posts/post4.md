@@ -2,10 +2,11 @@
 If you find this article useful, leave a thumbs up or a comment [below](#comments)!
 
 _Last updated: {{ git_revision_date_localized }}_.  
----![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&label=Visits) 
+![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&label=Visits) 
+
 ## 0. Introduction
 ### Motivations
-The goal of this article is to give a bird's-eye view of some of the principal architectural differences between recent AMD and Nvidia server GPUs and their implications on:
+The goal of this article is to give a non-exhaustive, bird's-eye view of some of the principal architectural differences between recent AMD and Nvidia server GPUs and their implications on:
 
 - performance discrepancies we might observe when switching vendors,
 - how we should program them.
