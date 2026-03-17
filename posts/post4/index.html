@@ -111,7 +111,7 @@
               
                 <h1 id="some-architectural-differences-between-amd-and-nvidia-recent-server-gpus">Some architectural differences between AMD and Nvidia recent server GPUs</h1>
 <p>If you find this article useful, leave a thumbs up or a comment <a href="#comments">below</a>!</p>
-<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 17, 2026 07:35:48 UTC"><span class="timeago" datetime="2026-03-17T07:35:48+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 17, 2026 07:35:48 UTC">2026-03-17</span></em>.<br />
+<p><em>Last updated: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 17, 2026 07:44:04 UTC"><span class="timeago" datetime="2026-03-17T07:44:04+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 17, 2026 07:44:04 UTC">2026-03-17</span></em>.<br />
 <img alt="Visits" src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost4%2F&amp;label=Visits" /> </p>
 <h2 id="0-introduction">0. Introduction</h2>
 <h3 id="motivations">Motivations</h3>
@@ -217,7 +217,7 @@
 <li>have less L1 &amp; L2 cache and shared memory / LDS.</li>
 </ul>
 <p>Starting with the MI300X, AMD GPUs also have an additional L3 cache absent from Nvidia GPUs. </p>
-<p><strong>Note:</strong> I will not cover the dual-GCD design of the MI250X nor the MI300A APU, as neither appears to be continued in future AMD server GPU releases.</p>
+<p><strong>Note:</strong> I will not cover the dual-GCD design of the MI250X (two MPI processes per card) nor AMD APUs, as neither appears to be continued in future AMD server GPU releases.</p>
 <p><strong>Note:</strong> From now on, I will use the terminology <em>AMD CDNA GPUs</em> or <em>Nvidia GPUs</em>, omitting the fact that I only talk about recent HPC/AI server products.</p>
 <h2 id="1-memory-hierarchy">1. Memory hierarchy</h2>
 <p>Let's start by looking at the Nvidia GPUs hardware hierarchy:</p>
