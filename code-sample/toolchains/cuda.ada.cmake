@@ -1,0 +1,5 @@
+set(CMAKE_CXX_COMPILER g++)
+set(CMAKE_CUDA_COMPILER nvcc)
+
+set(Kokkos_ENABLE_CUDA ON)
+set(Kokkos_ARCH_ADA89 ON)
