@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     Kokkos::deep_copy(A, 0);
     Kokkos::deep_copy(A, 1);
 
-    Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) { 
+    Kokkos::parallel_for("Kernel", Kokkos::RangePolicy(1,size-1), KOKKOS_LAMBDA(const int i) { 
 
       float tmp=0;
       for (int k=0; k<10; k++){

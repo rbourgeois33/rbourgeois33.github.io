@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 project(KokkosExamples LANGUAGES CXX)
 
 set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_STANDARD 23)
 
 include(FetchContent)
 
@@ -27,8 +28,6 @@ foreach(source_file ${EXAMPLES})
   get_filename_component(exe_name ${source_file} NAME_WE)
 
   add_executable(${exe_name} ${source_file})
-
-  target_compile_features(${exe_name} PRIVATE cxx_std_20) 
   
   target_link_libraries(${exe_name} PRIVATE Kokkos::kokkos)
 
