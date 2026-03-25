@@ -1,16 +1,8 @@
 # Instruction:
+Load `cuda` or `rocm`. Then in build e.g. `cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/cuda.ada.cmake`, you can easily make a custom toolchain file
 
-```
-module load cuda
-mkdir build
-cd build
-cmake -DKokkos_ENABLE_CUDA=ON ..
-make -j 20
-```
-
-To run an generate a report:
+To run an generate a `ncu` report:
 ```
 ncu --target-processes all --import-source yes --set full -f -o sample-1.ncu-rep ./sample-1
 ```
 
-You can also build with hip for AMD GPUs !
