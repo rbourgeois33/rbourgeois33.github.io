@@ -1,0 +1,161 @@
+Rocprofiler-Compute version: 3.4.0
+Profiler choice: rocprofiler-sdk
+Path: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210
+Target: MI210
+Command: ./sample-1
+Kernel Selection: None
+Dispatch Selection: None
+Filtered sections: All
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Collecting Performance Counters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[Run 1/13][Approximate profiling time left: pending first measurement...]
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQC_DCACHE_INFLIGHT_LEVEL.txt
+   |-> [rocprofiler-sdk] W20260326 11:23:54.198920 139727103174272 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.182692 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:54.199835 139727103174272 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:54.348839 139727103174272 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:23:54.497729 139727103174272 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.297894 sec
+   |-> [rocprofiler-sdk] E20260326 11:23:54.523031 139727103174272 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735966_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:23:54.548607 139727103174272 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735966_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:23:54.554669 139727103174272 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735966_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:23:54.565348 139727103174272 simple_timer.cpp:55] [rocprofv3] output generation ::     0.065524 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:54.565582 139727103174272 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.065828 sec
+[Run 2/13][Approximate profiling time left: 38 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQC_ICACHE_INFLIGHT_LEVEL.txt
+   |-> [rocprofiler-sdk] W20260326 11:23:57.471616 140316395005568 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.183158 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:57.472162 140316395005568 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:57.616323 140316395005568 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:23:57.758554 140316395005568 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.286392 sec
+   |-> [rocprofiler-sdk] E20260326 11:23:57.784675 140316395005568 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735988_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:23:57.808312 140316395005568 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735988_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:23:57.814101 140316395005568 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3735988_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:23:57.821563 140316395005568 simple_timer.cpp:55] [rocprofv3] output generation ::     0.060706 sec
+   |-> [rocprofiler-sdk] W20260326 11:23:57.821705 140316395005568 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.060917 sec
+[Run 3/13][Approximate profiling time left: 32 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQ_IFETCH_LEVEL.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:00.476055 140669266937472 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.197467 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:00.476686 140669266937472 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:00.623923 140669266937472 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:00.761627 140669266937472 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.284941 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:00.787614 140669266937472 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736004_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:00.833653 140669266937472 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736004_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:00.840730 140669266937472 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736004_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:00.848797 140669266937472 simple_timer.cpp:55] [rocprofv3] output generation ::     0.085293 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:00.848912 140669266937472 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.085471 sec
+[Run 4/13][Approximate profiling time left: 28 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQ_INST_LEVEL_LDS.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:03.750916 139994428262016 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.184419 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:03.751460 139994428262016 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:03.899493 139994428262016 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:04.029147 139994428262016 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.277687 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:04.054530 139994428262016 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736025_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:04.080491 139994428262016 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736025_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:04.092092 139994428262016 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736025_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:04.103075 139994428262016 simple_timer.cpp:55] [rocprofv3] output generation ::     0.072028 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:04.103232 139994428262016 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.072242 sec
+[Run 5/13][Approximate profiling time left: 25 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQ_INST_LEVEL_SMEM.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:06.744368 140330808698496 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.183220 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:06.744979 140330808698496 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:06.892751 140330808698496 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:07.022335 140330808698496 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.277356 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:07.047381 140330808698496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736246_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:07.071674 140330808698496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736246_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:07.076886 140330808698496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736246_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:07.084492 140330808698496 simple_timer.cpp:55] [rocprofv3] output generation ::     0.060110 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:07.084581 140330808698496 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.060263 sec
+[Run 6/13][Approximate profiling time left: 22 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQ_INST_LEVEL_VMEM.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:09.743575 139843791951488 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.191861 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:09.744128 139843791951488 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:09.888362 139843791951488 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:10.017443 139843791951488 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.273315 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:10.042902 139843791951488 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736261_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:10.067318 139843791951488 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736261_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:10.073332 139843791951488 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736261_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:10.080930 139843791951488 simple_timer.cpp:55] [rocprofv3] output generation ::     0.061410 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:10.081071 139843791951488 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.061611 sec
+[Run 7/13][Approximate profiling time left: 18 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/SQ_LEVEL_WAVES.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:12.684635 139633076090496 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.182464 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:12.685186 139633076090496 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:12.829301 139633076090496 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:12.959975 139633076090496 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.274789 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:12.985486 139633076090496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736280_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:13.009838 139633076090496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736280_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:13.015419 139633076090496 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736280_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:13.023496 139633076090496 simple_timer.cpp:55] [rocprofv3] output generation ::     0.061246 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:13.023579 139633076090496 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.061399 sec
+[Run 8/13][Approximate profiling time left: 15 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_0.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:15.613175 139710740629120 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.183117 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:15.613752 139710740629120 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:15.756882 139710740629120 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:15.887595 139710740629120 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.273843 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:15.913099 139710740629120 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736294_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:15.937439 139710740629120 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736294_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:15.951999 139710740629120 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736294_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:15.959898 139710740629120 simple_timer.cpp:55] [rocprofv3] output generation ::     0.070330 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:15.959980 139710740629120 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.070473 sec
+[Run 9/13][Approximate profiling time left: 12 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_1.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:18.562810 140167425037952 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.183877 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:18.563387 140167425037952 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:18.708865 140167425037952 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:18.835059 140167425037952 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.271672 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:18.860341 140167425037952 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736309_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:18.885393 140167425037952 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736309_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:18.891025 140167425037952 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736309_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:18.898921 140167425037952 simple_timer.cpp:55] [rocprofv3] output generation ::     0.061480 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:18.899055 140167425037952 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.061682 sec
+[Run 10/13][Approximate profiling time left: 9 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_2.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:21.526142 139980092139136 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.190781 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:21.526820 139980092139136 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:21.678894 139980092139136 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:21.802584 139980092139136 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.275764 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:21.834834 139980092139136 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736366_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:21.860049 139980092139136 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736366_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:21.865452 139980092139136 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736366_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:21.873753 139980092139136 simple_timer.cpp:55] [rocprofv3] output generation ::     0.069288 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:21.873868 139980092139136 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.069473 sec
+[Run 11/13][Approximate profiling time left: 6 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_3.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:24.508679 139971112093312 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.191350 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:24.509353 139971112093312 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:24.657822 139971112093312 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:24.778330 139971112093312 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.268977 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:24.803897 139971112093312 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736380_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:24.828135 139971112093312 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736380_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:24.834586 139971112093312 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736380_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:24.843101 139971112093312 simple_timer.cpp:55] [rocprofv3] output generation ::     0.062671 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:24.843195 139971112093312 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.062829 sec
+[Run 12/13][Approximate profiling time left: 3 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_4.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:27.444321 139633172907648 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.183328 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:27.444854 139633172907648 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:27.594242 139633172907648 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:27.715819 139633172907648 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.270965 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:27.741747 139633172907648 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736403_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:27.766091 139633172907648 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736403_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:27.771037 139633172907648 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736403_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:27.778944 139633172907648 simple_timer.cpp:55] [rocprofv3] output generation ::     0.061210 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:27.779019 139633172907648 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.061346 sec
+[Run 13/13][Approximate profiling time left: 0 seconds]...
+[profiling] Current input file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/perfmon/pmc_perf_5.txt
+   |-> [rocprofiler-sdk] W20260326 11:24:30.347907 139998423496320 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.177915 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:30.348560 139998423496320 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.000000 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:30.498816 139998423496320 tool.cpp:2422] HSA version 8.20.0 initialized (instance=0)
+   |-> [rocprofiler-sdk] W20260326 11:24:30.613735 139998423496320 simple_timer.cpp:55] [rocprofv3] './sample-1' ::     0.265176 sec
+   |-> [rocprofiler-sdk] E20260326 11:24:30.640063 139998423496320 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736417_kernel_trace.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:30.664615 139998423496320 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736417_counter_collection.csv
+   |-> [rocprofiler-sdk] E20260326 11:24:30.669103 139998423496320 output_stream.cpp:111] Opened result file: /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210/out/pmc_1/g1342/3736417_agent_info.csv
+   |-> [rocprofiler-sdk] W20260326 11:24:30.677723 139998423496320 simple_timer.cpp:55] [rocprofv3] output generation ::     0.061309 sec
+   |-> [rocprofiler-sdk] W20260326 11:24:30.677772 139998423496320 simple_timer.cpp:55] [rocprofv3] tool finalization ::     0.061415 sec
+PC sampling data collection skipped as block 21 is not specified.
+[roofline] Checking for roofline.csv in /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210
+[roofline] Empirical Roofline PDFs saved!
+[roofline] Checking for roofline.csv in /lus/work/RES1/genden15/rbourgeois/rbourgeois33.github.io/code-sample/build/workloads/sample-1/MI210
+[roofline] Empirical Roofline PDFs saved!

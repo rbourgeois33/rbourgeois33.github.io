@@ -1,0 +1,5 @@
+pmc: SQ_WAVE_CYCLES
+
+gpu:
+range:
+kernel:
