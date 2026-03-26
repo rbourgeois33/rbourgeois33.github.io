@@ -12,7 +12,7 @@ void apply_kernel(Kokkos::View<float**> A,  Kokkos::View<float**> B, Kokkos::Vie
             indir[dir] = indirections(i, dir);
             Atmp[dir] = A(i, dir);
             Btmp[dir] = B(i, dir);
-        } 
+        }  
         for (int k = 0; k < 10; k++){
             for (int dir = 0; dir < dim; dir++){
                 for (int dir2 = 0; dir2 < dim; dir2++){

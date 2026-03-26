@@ -12,3 +12,15 @@ for a `rocprof-compute` report:
 rocprof-compute profile --name sample-1 -- ./sample-1
 ```
 
+To profile all without redoing roofline:
+
+```bash
+for exe in sample-*; do
+  [[ -x "$exe" && -f "$exe" ]] || continue
+  name=$(basename "$exe")
+  outdir="workloads/$name/MI210"
+  mkdir -p "$outdir"
+  cp roofline.csv "$outdir/"
+  rocprof-compute profile --name "$name" -- "./$exe"
+done
+```

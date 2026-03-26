@@ -20,6 +20,13 @@ FetchContent_MakeAvailable(kokkos)
 if (Kokkos_ENABLE_CUDA)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lineinfo -Xptxas -v")
 endif()
+
+#HIP only flags
+if (Kokkos_ENABLE_HIP)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass-analysis=kernel-resource-usage")
+endif()
+
+
 # --- Collect all cpp files in src/ dirty.. https://cmake.org/cmake/help/latest/command/file.html#filesystem---
 file(GLOB EXAMPLES "*.cpp")
 
