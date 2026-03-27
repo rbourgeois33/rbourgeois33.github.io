@@ -9,8 +9,7 @@ int main(int argc, char* argv[]) {
     Kokkos::View<float**> A("A", size, size);
     Kokkos::View<float**> B("B", size, size);
 
-    Kokkos::deep_copy(A, 0);
-    Kokkos::deep_copy(A, 1);
+    Kokkos::deep_copy(B, 1);
 
     auto policy =  Kokkos::MDRangePolicy<Kokkos::Rank<2>> ({1,1}, {size-1, size-1});
     Kokkos::parallel_for("blurr", policy, KOKKOS_LAMBDA(const int i, const int j) { 

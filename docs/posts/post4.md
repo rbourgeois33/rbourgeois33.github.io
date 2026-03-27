@@ -47,10 +47,9 @@ A few observations from this table. AMD GPUs:
 
 Starting with the MI300X, AMD GPUs also have an additional L3 cache absent from Nvidia GPUs. 
 
-**Note:** I will not cover the dual-GCD design of the MI250X nor the MI300A APU, as neither appears to be continued in future AMD server GPU releases.
+**Note:** I will not cover the dual-GCD design of the MI250X (two MPI processes per card) nor AMD APUs, as neither appears to be continued in future AMD server GPU releases.
 
 **Note:** From now on, I will use the terminology *AMD CDNA GPUs* or *Nvidia GPUs*, omitting the fact that I only talk about recent HPC/AI server products.
-
 
 ## 1. Memory hierarchy
 

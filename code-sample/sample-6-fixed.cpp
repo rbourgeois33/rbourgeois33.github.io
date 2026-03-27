@@ -9,8 +9,7 @@ int main(int argc, char* argv[]) {
     Kokkos::View<float**> A("A", size, size);
     Kokkos::View<float**> B("B", size, size);
 
-    Kokkos::deep_copy(A, 0);
-    Kokkos::deep_copy(A, 1);
+    Kokkos::deep_copy(B, 1);
 
     Kokkos::parallel_for("blurr", (size-2)*(size-2), KOKKOS_LAMBDA(const int ilin) { 
       
