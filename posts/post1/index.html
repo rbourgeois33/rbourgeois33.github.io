@@ -165,6 +165,10 @@
     <li class="toctree-l2"><a class="reference internal" href="#deprecated">DEPRECATED</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#kokkos-specific-do-not-use-kokkosmdrangepolicy">[Kokkos specific] Do not use Kokkos::MDRangePolicy</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#510-improvement">5.1.0 improvement</a>
+    </li>
+        </ul>
     </li>
         </ul>
     </li>
@@ -942,6 +946,10 @@ Kokkos::parallel_for(&quot;blurr&quot;, policy, KOKKOS_LAMBDA(const int i, const
 <p><strong>Figure 17:</strong> Occupancy graphs of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep">sample-6-fixed.ncu-rep</a></p>
 <p>The block size picked by the <code>Kokkos::MDRangePolicy</code> is 32, which is a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!</p>
 <p><strong>Note:</strong> The choice of the block size can be tuned in Kokkos, I was simply pointing out that the default choice can be bad. However, I do not think there is a way to fix the extra register usage.</p>
+<h5 id="510-improvement">5.1.0 improvement</h5>
+<p>Re-runing and profiling <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6.cpp">sample-6.cpp</a>, we can compare <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6.ncu-rep">sample-6.ncu-rep</a> with <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-kokkos-510.ncu-rep">sample-6-kokkos-510.ncu-rep</a>:</p>
+<p><img alt="alt text" src="../image-35.png" /></p>
+<p>We can see that with the recent improvement of <code>MDRangepolicy</code>, the block size choice is much better and leads to a 100% occupancy. We also notice a slightly reduced register usage. This allows a speedup from 36 to 10 ms !</p>
               
             </div>
           </div><footer>
