@@ -2,3 +2,5 @@ site
 site/*
 site/**
 .DS_Store
+*pmc_dispatch_info.csv*
+*pmc_kernel_top.csv*
