@@ -72,7 +72,7 @@ Although not necessary for getting through this blog post, I recommend you learn
 - What is Kokkos, why you might want to use it and how to get started with it. Some resources:
     - [ATPESC 2022 Kokkos session](https://www.youtube.com/watch?v=64Qczo9biBI&list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&index=29) by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab).
     - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant. Also, join [the slack](https://kokkosteam.slack.com/)!.
-    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for it's legacy codes! (see [the CExA project](https://cexa-project.org/)).
+    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for its legacy codes! (see [the CExA project](https://cexa-project.org/)).
 
 ### Disclaimers
 
@@ -168,7 +168,7 @@ Kokkos::parallel_for("Kernel", size, KOKKOS_LAMBDA(const int i) {
     A(i) += tmp;
 });
 ```
-**Note**: Since each thread uses the same values of B as it's neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.
+**Note**: Since each thread uses the same values of B as its neighbors, shared memory could be used to further improve performance. However, this kernel is simple enough so that caches probably already do a good job.
 
 With this simple change, we went from 60R, 30W per thread to 31R, 1W. You might think that it is such an obvious thing to avoid that it is not even worth talking about it. But I disagree! Often, when first porting to Kokkos, in a time limited environment, we simply replace the e.g. `std::vector` by `Kokkos::View` in the kernel body, check functionality and move onto the next kernel, resulting in this issue hindering performance. Moreover, for more very long, intricate kernels with many Views, spotting and   removing redundant memory accesses is quite tedious. Try for e.g. [this one](https://github.com/cea-trust-platform/trust-code/blob/509d09ae94bc5189131c6f160f1d42f6024cfa98/src/VEF/Operateurs/Op_Conv/Op_Conv_VEF_Face.cpp#L473).
 #### Profiler diagnosis
@@ -207,7 +207,7 @@ The warp states shows you the **reasons** why your warps have been stalled durin
 
 **Figure 5:** Metric information for Stall long scoreboard.
 
-Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. *Stall LG throttle* means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for it's warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations! If you still observe that *Stall LG throttle* is limiting your performance even after removing all redundant memory operations, consider using [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) to pull more floating point numbers per request.
+Stall long scoreboard means that warps are waiting on a memory dependency from global memory, this not surprising and a very common one for memory bound kernels. *Stall LG throttle* means that the warps are waiting on the warp slot queue to have a spot to be scheduled. Indeed, each warp scheduler has a finite amount of spots for its warps to be scheduled. If a kernel issues too many requests, warps are waiting, not on a dependency, but simply on a spot in the queue. This is also a good symptom of redundant memory operations! If you still observe that *Stall LG throttle* is limiting your performance even after removing all redundant memory operations, consider using [vectorized memory access](https://developer.Nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/) to pull more floating point numbers per request.
 
 Let's now look at the Compute workload analysis since Figure 2 shows us that the compute pipeline is heavily used. This can be surprising at first considering that our kernel is not compute intensive.
 
@@ -331,7 +331,7 @@ In this ideal case, each thread is loading a FP64 number. There are 32 threads i
 ![alt text](image-10.png)
 **Figure 9:** strided memory accesses. Adapted from [source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). 
 
-In this case, each thread is still accessing a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on it's own", a whole sector is requested for each. As a result 32 sectors = 32 memory requests = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the requests is used, and the case gets worst if you are working with smaller datatypes.
+In this case, each thread is still accessing a FP64 numbers, but there is a sector-wide stride between threads. Since a FP64 number cannot be loaded "on its own", a whole sector is requested for each. As a result 32 sectors = 32 memory requests = 1024 bytes are loaded, for only 256 bytes used. This means that only a quarter of the requests is used, and the case gets worst if you are working with smaller datatypes.
 
 #### Profiler diagnosis
 
@@ -398,7 +398,7 @@ The report can be found at [sample-3.ncu-rep](https://github.com/rbourgeois33/rb
 For simulations on unstructured meshes, I recommend using [Z-order curve](https://en.wikipedia.org/wiki/Z-order_curve) re-ordering of the mesh elements. For our CFD code TRUST, this enabled an overall +20% speedup due to better coalescing (congrats to [Adrien Bruneton](https://www.linkedin.com/in/adrien-bruneton-7bb0ba94/)).
 
 ## 2. Avoid the use of local memory
-### What is local memory, how to detect it's usage.
+### What is local memory, how to detect its usage.
 As we saw in the introduction's refresher, local memory is private to a thread and may reside in DRAM, L2 or L1, which is potentially very slow, and in any case much slower than registers. Local memory usage happens in two cases:
 
 - when the *"stack"* is used,
@@ -540,7 +540,7 @@ Now, comparing the `ncu` reports [sample-4.ncu-rep](https://github.com/rbourgeoi
 As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in `ncu`. This is also the case for register spilling, as detailed in the next section.
 
 ### Avoid register spilling
-Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
+Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. In particular, allocating more than 255 register per threads is impossible on most platforms. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
 
 **Note:** If register spilling was always bad, CUDA would not allow it. It might be useful sometimes but in my limited experience I could always get rid of it and get good performances.
 
@@ -785,6 +785,7 @@ Thanks to :
 
 - Paul Gannay (CEA-MDLS) for providing feedback.
 - Nicolas Blin (Nvidia) for teaching me most of the content of this blog-post during the 2025 IDRIS Hackathon and the course he taught at CEA Saclay, plus some typo fixing.
+- Tristan Chenaille (PhD Student, CEA) for typos corrections and suggestions on occupancy.
 
 ## Comments 
 <script src="https://giscus.app/client.js"
