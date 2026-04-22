@@ -254,14 +254,14 @@
 <blockquote>
 <p><em>"Don't forget about the Local Data Share (LDS). If you need caching, do not expect the GPU to do it for you — even if it partially works, you are likely leaving performance on the table versus using LDS explicitly."</em></p>
 </blockquote>
-<p>The conclusion is that <strong>using LDS / shared memory is more important and more rewarding on AMD GPUs than on Nvidia GPUs.</strong></p>
+<p>The conclusion is that <strong>using LDS / shared memory is more important on AMD GPUs than on Nvidia GPUs.</strong></p>
 <h2 id="3-warp-wavefront-size">3. Warp / wavefront size</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence">my first blog post</a>, I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.</p>
-<p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. With a larger SIMT width, we can expect that poor alignment penalizes performance more, but good alignment also benefits more. As a result, <strong>avoiding intra-warp thread divergence is more important and more rewarding on AMD GPUs than on Nvidia GPUs.</strong> </p>
+<p>On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. With a larger SIMT width, we can expect that poor alignment penalizes performance more, but good alignment also benefits more. As a result, <strong>avoiding intra-warp thread divergence is more important on AMD GPUs than on Nvidia GPUs.</strong> </p>
 <h2 id="4-memory-access-granularity">4. Memory access granularity</h2>
 <p>In <a href="https://rbourgeois33.github.io./posts/post1/#minimize-redundant-kernel-level-memory-requests-coalescing-accesses">my first blog post</a>, I explain that on Nvidia GPUs you should organize your data and iteration pattern so that threads of the same warp access from the fewest sectors possible. Nvidia's sectors are the smallest chunks of memory that can be exchanged between L2 and the SM and are 32 bytes long. Interestingly, a sector <strong>is not</strong> a cache line. Sectors are 32 bytes wide on all Nvidia GPU models, regardless of L1/L2 cache line size (64 or 128 bytes). This is achieved by subdividing each cache line into the sectors that share the line's tag, but have their individual status bit.</p>
 <p><strong>Note:</strong> If you are not familiar with caches, I recommend watching <a href="https://www.youtube.com/watch?v=wfVy85Dqiyc&amp;list=PL38NNHQLqJqYnNrTenxBvGJSPCkV9EOWk&amp;index=3">BitLemon's YouTube Playlist on CPU caches</a>. You will understand what write-through (L1) and write-back (Nvidia L2) caches are, and what the status bit is.</p>
-<p>AMD does not document sectoring behavior. Therefore, the memory access granularity between L2 and the SM is likely equal to the L1/L2 cache line size i.e. 64 or 128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. <strong>Avoiding uncoalesced accesses is more important and more rewarding on AMD GPUs than on Nvidia GPUs.</strong></p>
+<p>AMD does not document sectoring behavior. Therefore, the memory access granularity between L2 and the SM is likely equal to the L1/L2 cache line size i.e. 64 or 128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. <strong>Avoiding uncoalesced accesses is more important on AMD GPUs than on Nvidia GPUs.</strong></p>
 <!-- ## 5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores -->
 
 <h2 id="5-conclusion">5. Conclusion</h2>
@@ -270,7 +270,7 @@
 <li>Unused LDS does not perform caching on AMD GPUs,</li>
 <li>AMD's wavefronts and memory access granularity are larger than on Nvidia GPUs.</li>
 </ul>
-<p>Therefore, programming carefully to fully utilize the LDS, aligning memory accesses and instructions is <strong>more important and more rewarding on AMD GPUs than on Nvidia GPUs.</strong> </p>
+<p>Therefore, programming carefully to fully utilize the LDS, aligning memory accesses and instructions is <strong>more important on AMD GPUs than on Nvidia GPUs.</strong> </p>
 <p>The good news is that these optimizations are portable. For example, using shared memory on Nvidia is less critical than LDS on AMD. But it is very often better than letting the L1 cache do the work, since shared memory bypasses some cache mechanisms that come with their own costs. The same goes for efforts towards better memory coalescing and instruction alignment; they will benefit all GPUs. So just do the optimizations!</p>
 <h2 id="6-bonus-trusts-context">6. Bonus: TRUST's context</h2>
 <p>I work on the <a href="https://cea-trust-platform.github.io/">TRUST platform</a>, a HPC thermohydraulic simulation tool that runs on both AMD and Nvidia hardware thanks to the Kokkos library. Since our goal is to run on the next European exascale machine <em>Alice Recoque</em>, which will be built with AMD GPUs, we are getting very serious about performance on them. </p>
