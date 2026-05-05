@@ -2,7 +2,7 @@
 If you find this article useful, leave a thumbs up or a comment [below](#comments) !
  
 _Last updated: {{ git_revision_date_localized }}_.  
- <!--![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits) -->
+![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
 
 ## 0. Introduction
 ### Some context and motivations
@@ -707,7 +707,7 @@ This reduces the register usage to 24 (again, this is huge because I pick the ex
 
 #### Force register spilling
 
-By playing with CUDA's [\__launch_bounds__](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds), or equivalently, Kokkos's [LaunchBounds](https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies), you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory.
+By playing with CUDA's [\__launch_bounds__](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds), or equivalently, Kokkos's [LaunchBounds](https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies), you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory. This can constitute a prime example of falling into the occupancy trap!
 
 **Note:** Since CUDA 13.0, you can [limit spilling to L1/shared-memory](https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/).
 
@@ -799,7 +799,7 @@ Participate to [hackathons](https://www.openhackathons.org/s/)! These are a fant
 
 ### Going Beyond basic advice
 
-Here are some more advanced optimization techniques if you wish to go further:
+Here are some links to more advanced optimization techniques if you wish to go further:
 
 - [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s),
 - [vectorized memory access](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
@@ -832,7 +832,7 @@ Thanks to :
         async>
 </script>
 
-<!-- ## DEPRECATED 
+<!--- ## DEPRECATED 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
 
 **Important Note:** The issues of `Kokkos::MDRangePolicy` mentionned in this section have been fixed [the CExA project](https://cexa-project.org/) team since `Kokkos/5.1.0`. I leave this section to emphasize the impressive work of the Kokkos team.
@@ -899,4 +899,4 @@ Re-runing and profiling [sample-6.cpp](https://github.com/rbourgeois33/rbourgeoi
 
 ![alt text](image-35.png)
 
-We can see that with the recent improvement of `MDRangepolicy`, the block size choice is much better and leads to a 100% occupancy. We also notice a slightly reduced register usage. This allows a speedup from 36 to 10 ms !
+We can see that with the recent improvement of `MDRangepolicy`, the block size choice is much better and leads to a 100% occupancy. We also notice a slightly reduced register usage. This allows a speedup from 36 to 10 ms ! -->
