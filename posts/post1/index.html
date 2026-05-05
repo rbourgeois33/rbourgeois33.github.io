@@ -132,6 +132,8 @@
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#template-away-heavy-branches">Template away heavy branches</a>
     </li>
+    <li class="toctree-l4"><a class="reference internal" href="#force-register-spilling">Force register spilling</a>
+    </li>
         </ul>
     </li>
         </ul>
@@ -799,6 +801,9 @@ if (expensive_option){
 }
 </code></pre>
 <p>This reduces the register usage to 24 (again, this is huge because I pick the example, but the goal is to show you the principles). The achieved occupancy is bumped from 12% to 77%, reducing the runtime from 26.77 to 9.74ms (-63%), basically what <code>ncu</code> predicted is the "<a href="#profiler-diagnosis_4">Profiler Diagnosis</a>" section.</p>
+<h4 id="force-register-spilling">Force register spilling</h4>
+<p>By playing with CUDA's <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds">__launch_bounds__</a>, or equivalently, Kokkos's <a href="https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies">LaunchBounds</a>, you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory.</p>
+<p><strong>Note:</strong> Since CUDA 13.0, you can <a href="https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/">limit spilling to L1/shared-memory</a>.</p>
 <h2 id="4-avoid-basic-compute-mistakes">4. Avoid basic compute mistakes</h2>
 <p>As mentioned in the introduction, most of the kernels I work with in the context of my CFD code are heavily memory bound. Therefore, this section is much slimmer and not exhaustive at all. However, as mentioned before, I do my performance tests on a <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU which has a very limited amount of FP64 CUDA cores (1:64 compared to FP32). As a result, even with a very memory bound kernel, I can quickly reach the compute limits of my GPU. This led me to figure out a short lists of things to keep in mind when writing math in a GPU kernel</p>
 <h3 id="profiler-diagnosis_5">Profiler diagnosis</h3>
