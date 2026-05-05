@@ -1,24 +1,24 @@
-# Five basic performance advice for porting kernels to the GPU.
+# Five basic performance advice for writing reasonably performant GPGPU kernels
 If you find this article useful, leave a thumbs up or a comment [below](#comments) !
  
 _Last updated: {{ git_revision_date_localized }}_.  
-![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits)
+ <!--![Visits](https://hitscounter.dev/api/hit?url=https%3A%2F%2Frbourgeois33.github.io%2Fposts%2Fpost1%2F&label=Visits) -->
 
 ## 0. Introduction
 ### Some context and motivations
 
-I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). This is quite a challenging task as the code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU! In this blog post, the term *kernel* refers to a single parallel loop, that fits in a so-called CUDA kernel, or equivalently within a `Kokkos::parallel_for`. As I went and optimized some kernels, something struck me:
+I was hired by CEA to join the porting effort of the the legacy code [TRUST](https://cea-trust-platform.github.io/) to the GPU using [Kokkos](https://github.com/kokkos/kokkos). The code is 20 years old, and more than 1400 kernels were identified to be ported to the GPU. As I went and optimized some kernels, something struck me:
 
 **The nature of the task of porting kernels to the GPU, especially when time is limited, often leads to small mistakes that can undermine performance.**
 
-The goal of this blog post is to give you *basic*, easy tips to keep in mind when writing / porting / first optimizing your kernels, so that you get a *reasonable* performance. By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
+The goal of this blog post is to give you *basic* tips for writing/porting/first optimizing your kernels and obtaining *reasonable* performance, with an emphasis on  Nvidia's kernel profiler [nsight compute](https://developer.Nvidia.com/nsight-compute). By applying them, I was able to get the following speedups that are measured relative to an already GPU-enabled baseline:
 
 - A 40-50% speedup on a CFD [convection kernel](https://github.com/cea-trust-platform/trust-code/commit/c6aa7d871a019c9258f1cad6bc9bc84954865b35) from TRUST (obtained on RTX A5000, RTX A6000 Ada and H100 GPUs). **Brace yourself**: this is a monstrous kernel.
 - A 20-50% speedup on a CFD [diffusion kernel](https://github.com/cea-trust-platform/trust-code/commit/7ac3ec98ba17a187e84c828c62b035ce66004885) from TRUST (obtained on RTX A6000 Ada and H100 GPUs).
 - A 10% speedup on a sparse SPMV kernel from TRUST.
 - A 20% speedup on a [MUSCL reconstruction kernel](https://github.com/Maison-de-la-Simulation/heraclespp/blob/54feb467f046cf21bdca5cfa679b453961ea8d7e/src/hydro/limited_linear_reconstruction.hpp#L54) from the radiative hydrodynamics code [heraclescpp](https://github.com/Maison-de-la-Simulation/heraclespp) (obtained on a A100 GPU).
   
-I will not go over what I consider to be *advanced* optimization techniques such as:
+<!-- I will not go over what I consider to be *advanced* optimization techniques such as:
 
 - [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s),
 - [vectorized memory access](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
@@ -26,7 +26,7 @@ I will not go over what I consider to be *advanced* optimization techniques such
 - [hardware-specific optimizations](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5),
 - [warp-level primitives](https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/).
 
-Because they are not required to get reasonable performances on simple kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or sparse matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.
+Because they are not required to get reasonable performances on most HPC kernels such as the ones cited above. Indeed these kernels might be very verbose  but remains simple patterns like stencil operations or sparse matrix filling. Moreover, these advanced optimizations require significant work to be deployed in large codes with hundreds of kernels, such as a CFD solver like TRUST. Keep in mind that maximum performance often comes at the cost of portability. The simple guidelines here should help you gain performance across all GPU platforms.
 
 If you aim for *optimal* performance, or if you are tackling complex kernels such as the [single-pass parallel prefix scan with decoupled look-back](https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf), you will need to dive into those *advanced* topics. But please do not reinvent the wheel ! If a kernel or algorithm is already implemented, optimized, and distributed in a library, do not re-code it yourself (Except for learning purposes!). Here is a non exhaustive sample:
 
@@ -35,13 +35,27 @@ If you aim for *optimal* performance, or if you are tackling complex kernels suc
 - [ROCm libraries](https://rocm.docs.amd.com/en/latest/reference/api-libraries.html) AMD equivalent of the two above entries.
 - [Kokkos kernels](https://github.com/kokkos/kokkos-kernels) for portable BLAS, sparse BLAS and graph kernels.
 - [Trilinos](https://trilinos.github.io/) for high level, portable solutions for the solution of large-scale, complex multi-physics engineering and scientific problems.
-- [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs).
+- [PETSc](https://petsc.org/release/) for the scalable solution of scientific applications modeled by partial differential equations (PDEs). -->
 
-Lastly, if you are in the process of optimizing/porting your code, and first learning about the GPU, you might want to start with the [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/) as kernel-level optimization is too low level to start with. The right approach is to identify the hot spots of your code and focus on them first (Assess, Parallelize, Optimize, Deploy cycle).
+**Important Notes:** 
 
-### Prerequisites and recommandations
+-  Kernel optimization one of the last parts of the GPU porting process. Before spending energy optimizing your kernels, you need to make sure that they are a bottleneck. Many firstly ported applications will be much more limited by i.e. redundant host<->device transfers. Use [nsight-systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) to asses the performance of your application.
+-  Do not reinvent the wheel ! If a kernel or algorithm is already implemented, optimized, and distributed in a library, do not re-code it yourself (Except for learning purposes!).
 
-In this tutorial, I will assume that you are already familiar with:
+<!-- Lastly, if you are in the process of optimizing/porting your code, and first learning about the GPU, you might want to start with the [CUDA C++ Best Practices Guide](https://docs.Nvidia.com/cuda/cuda-c-best-practices-guide/) as kernel-level optimization is too low level to start with. The right approach is to identify the hot spots of your code and focus on them first . -->
+
+### Relevant ressources
+
+- [The *new* CUDA programming guide](https://docs.nvidia.com/cuda/cuda-programming-guide/),
+- [13 lectures on CUDA by Bob Crovella (Nvidia)](https://www.youtube.com/watch?v=OsK8YFHTtNs&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj),
+- [Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)](https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ),
+- [1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/),
+- [How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/),
+- [The AMD GPUs profiling guide](https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html),
+- [ATPESC 2022 Kokkos session](https://www.youtube.com/watch?v=64Qczo9biBI&list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&index=29) by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab),
+- [The Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant. Also, join [the slack](https://kokkosteam.slack.com/)!
+
+<!--  In this tutorial, I will assume that you are already familiar with:
 
 - Basic C++.
 - The reason why you might want to use the GPU, and that you need a big enough problem to make full use of it.
@@ -50,7 +64,7 @@ In this tutorial, I will assume that you are already familiar with:
     - what does compute bound / memory bound mean.
 - Basic GPU architecture, in particular:
     - Some knowledge of the memory hierarchy (registers, L1/L2 caches, DRAM) and the increasing cost of memory accesses. What are CUDA threads / blocks and global memory. *You can be confused about what is local memory*. [Refresher](#refresher-software-hardware-concepts-in-cuda).
-    - Some knowledge of occupancy. [Refresher](#refresher-on-occupancy).
+    - Some knowledge of occupancy. [Refresher](#refresher-on-occupancy). 
     - Here are resources on GPU architecture / CUDA programming:
         - [Modern CUDA C++ class lecture series, by Nicolas Blin (Nvidia)](https://youtu.be/Sdjn9FOkhnA?si=ky211CLJOV-a5isZ),
         - [The *new* CUDA programming guide](https://docs.nvidia.com/cuda/cuda-programming-guide/),
@@ -72,23 +86,23 @@ Although not necessary for getting through this blog post, I recommend you learn
 - What is Kokkos, why you might want to use it and how to get started with it. Some resources:
     - [ATPESC 2022 Kokkos session](https://www.youtube.com/watch?v=64Qczo9biBI&list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&index=29) by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab).
     - [Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant. Also, join [the slack](https://kokkosteam.slack.com/)!.
-    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for its legacy codes! (see [the CExA project](https://cexa-project.org/)).
+    -  **Note:** you really *should* consider using Kokkos, or any other portable programming model. It's good enough so that CEA adopted it for its legacy codes! (see [the CExA project](https://cexa-project.org/)). -->
 
-### Disclaimers
+<!-- ### Disclaimers
 
 If you think I wrote something that is wrong, or misleading please let me know! Moreover, do not take my word as gospel, always test and evaluate my advice for your specific problem and report to me if they hurt performance !
 
 I am running my performance tests on Nvidia GPUs, just because they are more easily available to me, and that I am more familiar with their performance tools such as [nsight systems](https://developer.Nvidia.com/nsight-systems) (`nsys`) and [nsight compute](https://developer.Nvidia.com/nsight-compute) (`ncu`). Note that AMD provides similar profilers that are well explained in the [AMD GPUs profiling guide](https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html). Lastly, note that the advice that I give here are general enough so that they apply for GPUs from both vendors.<!-- If you are curious about understanding why some optimizations yield very different accelerations on AMD vs. Nvidia hardware, go read my [blog-post](post4.md) on the different architectural choices between AMD and Nvidia GPUs and their implications on performance -->
 
-I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **important**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
+<!--  I will use Kokkos as the programming model for the code sample, just because I work with it, and that performance portability is **important**. Again, the concepts are simple enough so that you can translate them to your favorite programming model, OpenMP, SYCL, Cuda, Hip.
 
 It is important to note that I am heavily biased towards memory-related optimization as the CFD code that I am working on is memory bound. Lastly, I plan on adding/improving this blog post as I learn more.
 
-I acknowledge the use of generative AI to improve wording, and help generating some of the code samples.
+I acknowledge the use of generative AI to improve wording, and help generating some of the code samples. -->
 
 ### Outline
 
-The outline for this blog post is the following five rules of thumbs,or advice, largely inspired by [the Nvidia Ampere tuning guide](https://docs.Nvidia.com/cuda/ampere-tuning-guide/index.html):
+The outline for this blog post is the following five rules of thumbs, or advice:
 
 1. [Minimize redundant global memory accesses](#1-minimize-redundant-global-memory-accesses)
 2. [Avoid the use of *Local memory*](#2-avoid-the-use-of-local-memory)
@@ -96,15 +110,13 @@ The outline for this blog post is the following five rules of thumbs,or advice, 
 4. [Avoid basic compute mistakes](#4-avoid-basic-compute-mistakes)
 5. [Avoid intra-warp thread divergence](#5-avoid-intra-warp-thread-divergence)
 
-Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections.
+Feel free to jump straight into your sections of interest. One of the main interest of this tutorial is to teach you *where* to look for information in `ncu`. Look for the *"Profiler diagnosis"* sections. All sample code and `ncu` reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/main/code-sample) along with compilation and execution instructions. The samples were ran with my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
 
-### Before we start
+<!--### Before we start
 
-Before going into the five advice, I invite you to read [my blog post on the cost of communications](post2.md) that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). 
+<!--Before going into the five advice, I invite you to read [my blog post on the cost of communications](post2.md) that is a unnecessary long introduction for advice 1 and 2. I also strongly advise watching [this brilliant talk on communication-avoiding algorithms](https://www.youtube.com/watch?v=iPCBCjgoAbk). -->
 
-All sample code and `ncu` reports can be found [here](https://github.com/rbourgeois33/rbourgeois33.github.io/tree/main/code-sample) along with compilation and execution instructions. The samples were ran with my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU.
-
-#### Refresher: software / hardware concepts in CUDA
+### Optional refresher: software / hardware concepts in CUDA
 ![alt text](image-14.png)
 **Figure 1:** Software / hardware memory hierarchy of an Nvidia GPU. [source](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). 
 
@@ -114,7 +126,7 @@ The GPU hardware is organized as follows:
 - The DRAM is the slowest but largest memory of the GPU. It's speed **is** the GPU bandwidth. It is accessible by all Streaming Multiprocessors (SM).
 - The L2 cache is much smaller than the DRAM but faster. It is accessible by all SMs.
 - There is one L1 cache per SM. It is much smaller than the L2 but faster and accessible by only his host SM.
-- A register file per SM, much smaller than the L1 but the fastest memory, accessible by only his host SM.
+- A register file per SM, the fastest memory, and not necesseraly smaller than the L1, accessible by only his host SM.
 
 The software is organized as follows:
 
@@ -542,6 +554,7 @@ As you can see, there are many ways to detect stack usage, at compile time with 
 ### Avoid register spilling
 Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. In particular, allocating more than 255 register per threads is impossible on most platforms. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
 
+**Note:** Since CUDA 13.0, you can [limit spilling to L1/shared-memory](https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/).
 **Note:** If register spilling was always bad, CUDA would not allow it. It might be useful sometimes but in my limited experience I could always get rid of it and get good performances.
 
 #### Profiler diagnosis
@@ -552,7 +565,7 @@ Register spilling is detected the exact same way than stack usage. It can be det
 ### Refresher on occupancy
 
 #### What is occupancy
-Let's start by a short refresher on occupancy. But for the n-th time, consider looking at [the 1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). As we saw in the introduction's [refresher](#refresher-software-hardware-concepts-in-cuda), threads reside on the GPU's SMs as warps of 32. Each SM can host a maximum given number of active warps, e.g. 48 for my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU. This maximum hardware value depends on the so-called compute capability of the GPU, e.g. the SM's version. The occupancy of a kernel is the average measured ratio of active warps per SM to the maximum hardware value. Discrepancies between the two happen because each SM only has a limited amount of:
+Let's start by a short refresher on occupancy. But for the n-th time, consider looking at [the 1h30 lecture by Athena Elfarou (Nvidia)](https://www.Nvidia.com/en-us/on-demand/session/gtc24-s62191/). As we saw in the introduction's [refresher](#optional-refresher-software-hardware-concepts-in-cuda), threads reside on the GPU's SMs as warps of 32. Each SM can host a maximum given number of active warps, e.g. 48 for my [Nvidia RTX 6000 Ada generation](https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933) GPU. This maximum hardware value depends on the so-called compute capability of the GPU, e.g. the SM's version. The occupancy of a kernel is the average measured ratio of active warps per SM to the maximum hardware value. Discrepancies between the two happen because each SM only has a limited amount of:
 
 - registers that it can share among threads,
 - shared memory (hardware L1 cache) that it can share among threads,
@@ -620,7 +633,7 @@ In my limited experience, I have found no success in re-ordering operations with
 
 #### Use `Kokkos>=5.1.0`
 
-Prior to the release `5.1.0`, Kokkos's parallel iterator `Kokkos::MDRangePolicy` had several issues, including an over-use of registers. They have been fixed in Release `5.1.0` by [the CExA project](https://cexa-project.org/) team, so stick with a recent version ! See more detail in the [DEPRECATED](#deprecated) section below, and the [5.1.0 changelog](https://github.com/kokkos/kokkos/issues/8595).
+Prior to the release `5.1.0`, Kokkos's parallel iterator `Kokkos::MDRangePolicy` had several issues, including an over-use of registers. They have been fixed in Release `5.1.0` by [the CExA project](https://cexa-project.org/) team, so stick with a recent version. See more detail in  the [5.1.0 changelog](https://github.com/kokkos/kokkos/issues/8595).
 
 #### Template away heavy branches
 Now, let's look at [sample-7.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.cpp) where we added a runtime variable determining if we want to perform an heavy operation in the kernel:
@@ -692,6 +705,11 @@ if (expensive_option){
 ```
 This reduces the register usage to 24 (again, this is huge because I pick the example, but the goal is to show you the principles). The achieved occupancy is bumped from 12% to 77%, reducing the runtime from 26.77 to 9.74ms (-63%), basically what `ncu` predicted is the "[Profiler Diagnosis](#profiler-diagnosis_4)" section.
 
+#### Force register spilling
+
+By playing with CUDA's [\__launch_bounds__](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds), or equivalently, Kokkos's [LaunchBounds](https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies), you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory.
+
+**Note:** Since CUDA 13.0, you can [limit spilling to L1/shared-memory](https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/).
 
 ## 4. Avoid basic compute mistakes
 
@@ -774,12 +792,22 @@ This section follow closely the first part of [this GTC talk](https://www.nvidia
 - profiler diagnosis
 - more work per thread: ILP/DLP (+ le reste), schéma des access pattern--->
 
-## Final advice
+## Conclusion
+### Final advice
 
 Participate to [hackathons](https://www.openhackathons.org/s/)! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the [CINES website](https://www.cines.fr/) for AMD hackathons, and the [Idris website](http://www.idris.fr/) for Nvidia hackathons.
 
+### Going Beyond basic advice
 
-## Special thanks
+Here are some more advanced optimization techniques if you wish to go further:
+
+- [shared memory](https://www.youtube.com/watch?v=A1EkI5t_CJI&t=5s),
+- [vectorized memory access](https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/),
+- [tensor core operations](https://developer.nvidia.com/blog/optimizing-gpu-performance-tensor-cores/),
+- [hardware-specific optimizations](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5),
+- [warp-level primitives](https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/).
+
+### Special thanks
 
 Thanks to :
 
@@ -804,7 +832,7 @@ Thanks to :
         async>
 </script>
 
-## DEPRECATED 
+<!-- ## DEPRECATED 
 #### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
 
 **Important Note:** The issues of `Kokkos::MDRangePolicy` mentionned in this section have been fixed [the CExA project](https://cexa-project.org/) team since `Kokkos/5.1.0`. I leave this section to emphasize the impressive work of the Kokkos team.

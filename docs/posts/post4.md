@@ -99,13 +99,13 @@ We can expect this under-utilization to hinder performance when switching platfo
 
 > *"Don't forget about the Local Data Share (LDS). If you need caching, do not expect the GPU to do it for you — even if it partially works, you are likely leaving performance on the table versus using LDS explicitly."*
 
-The conclusion is that **using LDS / shared memory is more important and more rewarding on AMD GPUs than on Nvidia GPUs.**
+The conclusion is that **using LDS / shared memory is more important on AMD GPUs than on Nvidia GPUs.**
 
 ## 3. Warp / wavefront size
 
 In [my first blog post](https://rbourgeois33.github.io./posts/post1/#5-avoid-intra-warp-thread-divergence), I explain why it is important to avoid intra-warp thread divergence on Nvidia GPUs. Indeed, peak performance is obtained when the 32 threads of the warp go through the same logic branches, so that operations can be fully vectorized without masking.
 
-On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. With a larger SIMT width, we can expect that poor alignment penalizes performance more, but good alignment also benefits more. As a result, **avoiding intra-warp thread divergence is more important and more rewarding on AMD GPUs than on Nvidia GPUs.** 
+On AMD CDNA GPUs, wavefronts are 64 threads wide, twice as large. With a larger SIMT width, we can expect that poor alignment penalizes performance more, but good alignment also benefits more. As a result, **avoiding intra-warp thread divergence is more important on AMD GPUs than on Nvidia GPUs.** 
 
 ## 4. Memory access granularity
 
@@ -113,7 +113,7 @@ In [my first blog post](https://rbourgeois33.github.io./posts/post1/#minimize-re
 
 **Note:** If you are not familiar with caches, I recommend watching [BitLemon's YouTube Playlist on CPU caches](https://www.youtube.com/watch?v=wfVy85Dqiyc&list=PL38NNHQLqJqYnNrTenxBvGJSPCkV9EOWk&index=3). You will understand what write-through (L1) and write-back (Nvidia L2) caches are, and what the status bit is.
 
-AMD does not document sectoring behavior. Therefore, the memory access granularity between L2 and the SM is likely equal to the L1/L2 cache line size i.e. 64 or 128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. **Avoiding uncoalesced accesses is more important and more rewarding on AMD GPUs than on Nvidia GPUs.**
+AMD does not document sectoring behavior. Therefore, the memory access granularity between L2 and the SM is likely equal to the L1/L2 cache line size i.e. 64 or 128 bytes. As a result, AMD's memory access granularity is coarser than Nvidia's. **Avoiding uncoalesced accesses is more important on AMD GPUs than on Nvidia GPUs.**
 
 <!-- ## 5. (WIP) AMD Matrix Cores vs. Nvidia's Tensor cores -->
 
@@ -123,7 +123,7 @@ In this post, we briefly went over several architectural differences between AMD
 - Unused LDS does not perform caching on AMD GPUs,
 - AMD's wavefronts and memory access granularity are larger than on Nvidia GPUs.
 
-Therefore, programming carefully to fully utilize the LDS, aligning memory accesses and instructions is **more important and more rewarding on AMD GPUs than on Nvidia GPUs.** 
+Therefore, programming carefully to fully utilize the LDS, aligning memory accesses and instructions is **more important on AMD GPUs than on Nvidia GPUs.** 
 
 The good news is that these optimizations are portable. For example, using shared memory on Nvidia is less critical than LDS on AMD. But it is very often better than letting the L1 cache do the work, since shared memory bypasses some cache mechanisms that come with their own costs. The same goes for efforts towards better memory coalescing and instruction alignment; they will benefit all GPUs. So just do the optimizations!
 
