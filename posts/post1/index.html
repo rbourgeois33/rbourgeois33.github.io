@@ -163,14 +163,6 @@
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#comments">Comments</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#kokkos-specific-do-not-use-kokkosmdrangepolicy">[Kokkos specific] Do not use Kokkos::MDRangePolicy</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#510-improvement">5.1.0 improvement</a>
-    </li>
-        </ul>
-    </li>
-        </ul>
     </li>
     </ul>
                   </li>
@@ -923,15 +915,19 @@ This section follow closely the first part of [this GTC talk](https://www.nvidia
         async>
 </script>
 
-<p>&lt;!-- ## DEPRECATED </p>
-<h4 id="kokkos-specific-do-not-use-kokkosmdrangepolicy">[Kokkos specific] Do not use <code>Kokkos::MDRangePolicy</code></h4>
-<p><strong>Important Note:</strong> The issues of <code>Kokkos::MDRangePolicy</code> mentionned in this section have been fixed <a href="https://cexa-project.org/">the CExA project</a> team since <code>Kokkos/5.1.0</code>. I leave this section to emphasize the impressive work of the Kokkos team.</p>
-<p>I really love Kokkos, so I hate to write this but, as of now (September 2025), <code>Kokkos::MDRangePolicy</code> has a few issues that obliges me to advise you not to use it this functionnality, namely:</p>
-<ul>
-<li>excessive register usage, probably due to the internal tiling algorithm,</li>
-<li>very questionable default block size choice.</li>
-</ul>
-<p>If these get eventually solved, or if an alternative is proposed, I will happily change this part of my blog. Let's look at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6.cpp">sample-6.cpp</a> that applies a blurring kernel to a 2D view:</p>
+<!--- ## DEPRECATED 
+#### [Kokkos specific] Do not use `Kokkos::MDRangePolicy`
+
+**Important Note:** The issues of `Kokkos::MDRangePolicy` mentionned in this section have been fixed [the CExA project](https://cexa-project.org/) team since `Kokkos/5.1.0`. I leave this section to emphasize the impressive work of the Kokkos team.
+
+I really love Kokkos, so I hate to write this but, as of now (September 2025), `Kokkos::MDRangePolicy` has a few issues that obliges me to advise you not to use it this functionnality, namely:
+
+- excessive register usage, probably due to the internal tiling algorithm,
+- very questionable default block size choice.
+
+If these get eventually solved, or if an alternative is proposed, I will happily change this part of my blog. Let's look at [sample-6.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6.cpp) that applies a blurring kernel to a 2D view:
+
+
 <pre><code class="language-c++">// ...
 Kokkos::View&lt;float**&gt; A(&quot;A&quot;, size, size);
 Kokkos::View&lt;float**&gt; B(&quot;B&quot;, size, size);
@@ -950,7 +946,10 @@ Kokkos::parallel_for(&quot;blurr&quot;, policy, KOKKOS_LAMBDA(const int i, const
       A(i,j)=tmp*fifth;
 });
 </code></pre>
-<p>When compiling it, we see <code>ptxas info    : Used 30 registers, used 0 barriers, 544 bytes cmem[0]</code>. For <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.cpp">sample-6-fixed.cpp</a> where I linearized the 2D index:</p>
+
+When compiling it, we see `ptxas info    : Used 30 registers, used 0 barriers, 544 bytes cmem[0]`. For [sample-6-fixed.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6-fixed.cpp) where I linearized the 2D index:
+
+
 <pre><code class="language-c++">Kokkos::parallel_for(&quot;blurr&quot;, (size-2)*(size-2), KOKKOS_LAMBDA(const int ilin) { 
 
       const int i = 1 + (ilin % (size-2));
@@ -968,15 +967,24 @@ Kokkos::parallel_for(&quot;blurr&quot;, policy, KOKKOS_LAMBDA(const int i, const
 
 });
 </code></pre>
-<p>we see <code>ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]</code>. This means that the <code>MDRangePolicy</code> uses 8 extra registers. Moreover, when looking at <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6.ncu-rep">sample-6.ncu-rep</a>, we see that the base version lasts 36ms vs 9.86ms for <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep">sample-6-fixed.ncu-rep</a>. This huge gain is not due to the 8 saved registers (that would be too much). Instead, let's look at the occupancy graph of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep">sample-6-fixed.ncu-rep</a>:</p>
-<p><img alt="alt text" src="../image-23.png" /></p>
-<p><strong>Figure 17:</strong> Occupancy graphs of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep">sample-6-fixed.ncu-rep</a></p>
-<p>The block size picked by the <code>Kokkos::MDRangePolicy</code> is 32, which is a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!</p>
-<p><strong>Note:</strong> The choice of the block size can be tuned in Kokkos, I was simply pointing out that the default choice can be bad. However, I do not think there is a way to fix the extra register usage.</p>
-<h5 id="510-improvement">5.1.0 improvement</h5>
-<p>Re-runing and profiling <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6.cpp">sample-6.cpp</a>, we can compare <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6.ncu-rep">sample-6.ncu-rep</a> with <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-kokkos-510.ncu-rep">sample-6-kokkos-510.ncu-rep</a>:</p>
-<p><img alt="alt text" src="../image-35.png" /></p>
-<p>We can see that with the recent improvement of <code>MDRangepolicy</code>, the block size choice is much better and leads to a 100% occupancy. We also notice a slightly reduced register usage. This allows a speedup from 36 to 10 ms !</p>
+
+we see `ptxas info    : Used 22 registers, used 0 barriers, 488 bytes cmem[0]`. This means that the `MDRangePolicy` uses 8 extra registers. Moreover, when looking at [sample-6.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6.ncu-rep), we see that the base version lasts 36ms vs 9.86ms for [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep). This huge gain is not due to the 8 saved registers (that would be too much). Instead, let's look at the occupancy graph of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep):
+
+![alt text](image-23.png)
+
+**Figure 17:** Occupancy graphs of [sample-6-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-fixed.ncu-rep)
+
+The block size picked by the `Kokkos::MDRangePolicy` is 32, which is a very bad choice and leads to an occupancy of 50%. This explains the performance gain of the fixed version that show a 100% occupancy. I did not wish to go deeper on launch configuration optimization, but if you spot an issue like this in your profiler, go ahead and change the block size!
+
+**Note:** The choice of the block size can be tuned in Kokkos, I was simply pointing out that the default choice can be bad. However, I do not think there is a way to fix the extra register usage.
+
+##### 5.1.0 improvement
+
+Re-runing and profiling [sample-6.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-6.cpp), we can compare [sample-6.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6.ncu-rep) with [sample-6-kokkos-510.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-6-kokkos-510.ncu-rep):
+
+![alt text](image-35.png)
+
+We can see that with the recent improvement of `MDRangepolicy`, the block size choice is much better and leads to a 100% occupancy. We also notice a slightly reduced register usage. This allows a speedup from 36 to 10 ms ! -->
               
             </div>
           </div><footer>
