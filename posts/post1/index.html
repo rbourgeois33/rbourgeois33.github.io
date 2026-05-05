@@ -804,7 +804,7 @@ if (expensive_option){
 </code></pre>
 <p>This reduces the register usage to 24 (again, this is huge because I pick the example, but the goal is to show you the principles). The achieved occupancy is bumped from 12% to 77%, reducing the runtime from 26.77 to 9.74ms (-63%), basically what <code>ncu</code> predicted is the "<a href="#profiler-diagnosis_4">Profiler Diagnosis</a>" section.</p>
 <h4 id="force-register-spilling">Force register spilling</h4>
-<p>By playing with CUDA's <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds">__launch_bounds__</a>, or equivalently, Kokkos's <a href="https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies">LaunchBounds</a>, you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory.</p>
+<p>By playing with CUDA's <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds">__launch_bounds__</a>, or equivalently, Kokkos's <a href="https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies">LaunchBounds</a>, you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory. This can constitute a prime example of falling into the occupancy trap!</p>
 <p><strong>Note:</strong> Since CUDA 13.0, you can <a href="https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/">limit spilling to L1/shared-memory</a>.</p>
 <h2 id="4-avoid-basic-compute-mistakes">4. Avoid basic compute mistakes</h2>
 <p>As mentioned in the introduction, most of the kernels I work with in the context of my CFD code are heavily memory bound. Therefore, this section is much slimmer and not exhaustive at all. However, as mentioned before, I do my performance tests on a <a href="https://www.techpowerup.com/gpu-specs/rtx-6000-ada-generation.c3933">Nvidia RTX 6000 Ada generation</a> GPU which has a very limited amount of FP64 CUDA cores (1:64 compared to FP32). As a result, even with a very memory bound kernel, I can quickly reach the compute limits of my GPU. This led me to figure out a short lists of things to keep in mind when writing math in a GPU kernel</p>
@@ -883,7 +883,7 @@ This section follow closely the first part of [this GTC talk](https://www.nvidia
 <h3 id="final-advice">Final advice</h3>
 <p>Participate to <a href="https://www.openhackathons.org/s/">hackathons</a>! These are a fantastic way to meet GPU experts that will help you on your application, and teach you a lot. If you reside in France, look at the <a href="https://www.cines.fr/">CINES website</a> for AMD hackathons, and the <a href="http://www.idris.fr/">Idris website</a> for Nvidia hackathons.</p>
 <h3 id="going-beyond-basic-advice">Going Beyond basic advice</h3>
-<p>Here are some more advanced optimization techniques if you wish to go further:</p>
+<p>Here are some links to more advanced optimization techniques if you wish to go further:</p>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=A1EkI5t_CJI&amp;t=5s">shared memory</a>,</li>
 <li><a href="https://developer.nvidia.com/blog/cuda-pro-tip-increase-performance-with-vectorized-memory-access/">vectorized memory access</a>,</li>
