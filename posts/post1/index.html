@@ -853,6 +853,10 @@ if (expensive_option){
 <li>If you work with FP32 numbers, be careful when using hard coded floating point numbers. <code>0.0</code>, <code>3.0</code>are FP64 number. If you do operations on them, it will involve the FP64 pipelines. Instead, use e.g. <code>0.0f</code>.</li>
 </ul>
 </li>
+<li>Do not use <code>int8</code>, <code>int16</code><ul>
+<li>Using lower bits integers might look like a good idea as they should use less memory. However, GPUs do not have hardware units / SASS instruction for these types. Therefore, manipulating such ints implies converting them into <code>int32</code>, performing the math and converting back to lower ints. This adds instructions as well as register usage. </li>
+</ul>
+</li>
 <li>Int math can be a bottleneck:<ul>
 <li>If your kernel involves a lot of not unrolled loop, the integer pipeline can be heavily utilized and become a bottleneck. We typically do not think about this as we only talk about the FP32 and FP64 throughput, but it can happen. To spot this, look for:<ul>
 <li>a lot of <code>FMA</code> in the compute workload analysis section,  </li>
@@ -888,6 +892,8 @@ if (expensive_option){
 <p><img alt="alt text" src="../image-30.png" />
 <strong>Figure 22:</strong> Thread divergence warning in the Warp State Statistics section of <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-8.ncu-rep">sample-8.ncu-rep</a>.</p>
 <p>In <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.cpp">sample-8-fixed.cpp</a>, I removed the thread divergence by replacing the condition by <code>if ( i%64 &lt; 32 )</code>. As a result, even warps perform the simple sum, while odd warps will perform <code>cosh</code> and <code>sinh</code> evaluations, completely removing the intra-warp divergence. One can open <a href="https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-8-fixed.ncu-rep">sample-8-fixed.ncu-rep</a>) and notice the -21% speedup.</p>
+<p>In <code>ncu</code> "source view", you can also naviguate de sources by divergent branches, and find the highest contributors to the divergence:</p>
+<p><img alt="alt text" src="../image-36.png" /></p>
 <p><strong>Note:</strong> The operation of the base and the fixed versions differ. I chose these sample codes in order to show you where to look at in the profiler to spot this specific issue. In generality, if applicable, consider re-ordering you data / algorithm to avoid the need for intra-thread divergence.</p>
 <!---## 6. (WIP) Adjust Bytes-In-Flight
 This section follow closely the first part of [this GTC talk](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/?playlistId=playList-600dacf3-7db9-45fe-b0a2-e0156a792bc5). Go watch it for more information, but stay here for a small addition on profiler diagnosis.
