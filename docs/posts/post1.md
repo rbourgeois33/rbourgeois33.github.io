@@ -53,7 +53,7 @@ If you aim for *optimal* performance, or if you are tackling complex kernels suc
 - [How You Should Write a CUDA C++ Kernel by Georgii Evtushenko (Nvidia)](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72575/),
 - [The AMD GPUs profiling guide](https://rocm.blogs.amd.com/software-tools-optimization/profiling-guide/intro/README.html),
 - [ATPESC 2022 Kokkos session](https://www.youtube.com/watch?v=64Qczo9biBI&list=PLcbxjEfgjpO9OeDu--H9_XqyxPj3MkjdN&index=29) by Damien Lebrun Grandie, co-leader of the Kokkos core team (Oak Ridge National lab),
-- [The Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant. Also, join [the slack](https://kokkosteam.slack.com/)!
+- [The Kokkos lecture series](https://www.youtube.com/watch?v=rUIcWtFU5qM&list=PLqtSvL1MDrdFgDYpITs7aQAH9vkrs6TOF) (kind of outdated, still relevant.) Join [the slack](https://kokkosteam.slack.com/)!
 
 <!--  In this tutorial, I will assume that you are already familiar with:
 
@@ -326,7 +326,13 @@ I will not go through the `ncu` reports for this second example as the behavior 
 **Warning:** Note that when using static arrays as temporary storage, you might accidentally trigger *Local memory* usage as it may resides in the *stack* or cause *register spilling*. Please refer to [section 2](#2-avoid-the-use-of-local-memory) to avoid this!
 
 ### Minimize block-level redundant memory accesses: shared memory
-If you spot that neighboring threads (that likely reside on the same block) are using extensively the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant **block-level** memory accesses. Shared memory is essentially a portion of the L1 cache managed by the user. But beware, using it means that you think you can do a better job than the runtime!). To use shared memory in Kokkos, look at [Hierarchical Parallelism](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html). As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.
+If you spot that neighboring threads (that likely reside on the same block) are working on the same elements from global memory, I strongly suggest you learn more about shared memory, to reduce redundant **block-level** memory accesses. 
+
+On Nvidia GPUs, shared memory resides on the L1 cache. Any allocation in shared memory takes space from the L1. Well programmed shared memory is faster than L1 cache because it is fully explicit and removes the cost of cache mechanisms. 
+
+To use shared memory in Kokkos, look at [Hierarchical Parallelism](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/HierarchicalParallelism.html). 
+
+As mentioned in the introduction, I do not wish to delve deeper on this topic in this tutorial.
 
 ### Minimize redundant kernel-level memory requests: coalescing accesses
 
@@ -469,6 +475,9 @@ This can also happens when static arrays are used in loops that cannot be unroll
 ```
 in this piece of code, `bound` is a non-const, runtime variable that `nvcc` cannot deduce when compiling the kernel. Therefore, `tmp` is not statically addressed and has to reside in local memory. Try compiling  as it is, and after adding a `const` clause in `bound`'s declaration, and observe the difference in the output pf `Xptas`.
 
+Another scenario where stack allocation can occur is if `nvcc` is not able to inline a function call in a kernel. If the arguments include temporary arrays, they might have to be passed via the stack.
+
+
 #### Profiler diagnosis
 Let's look at a [sample-4.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-4.cpp) that resembles sample-2, but with an indirection table that is filled such that it contains values in $[0, \text{dim}[$:
 
@@ -552,10 +561,7 @@ Now, comparing the `ncu` reports [sample-4.ncu-rep](https://github.com/rbourgeoi
 As you can see, there are many ways to detect stack usage, at compile time with the right flags, or in `ncu`. This is also the case for register spilling, as detailed in the next section.
 
 ### Avoid register spilling
-Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. In particular, allocating more than 255 register per threads is impossible on most platforms. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides. You can also play with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) to avoid register spilling, at the cost of occupancy, but his is beyond the scope of this tutorial.
-
-**Note:** Since CUDA 13.0, you can [limit spilling to L1/shared-memory](https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/).
-**Note:** If register spilling was always bad, CUDA would not allow it. It might be useful sometimes but in my limited experience I could always get rid of it and get good performances.
+Register spilling happens when threads are requiring too much registers, so much so that it would hinders *occupancy* in such an extreme way that the compiler decides to "spill" the memory that should initially be in registers, into slow local memory. In particular, allocating more than 255 register per threads is impossible on most platforms. Therefore, advice on improving occupancy by reducing per-thread register usage will help avoiding register spilling. As a result, we refer to the the "[How to reduce per-thread register usage](#how-to-reduce-per-thread-register-usage)" section as the advice will coincides.
 
 #### Profiler diagnosis
 Register spilling is detected the exact same way than stack usage. It can be detected at compile time, it appears as local memory transactions in the memory workload analysis and shows up in the source view too.
@@ -573,12 +579,10 @@ Let's start by a short refresher on occupancy. But for the n-th time, consider l
 
 As a result, in order to improve occupancy, you may consider:
 
-- reducing per-thread register usage,
-- reduce shared memory usage,
-- tuning your launch configuration.
+- reducing per-thread register usage, ([How to reduce per thread register usage](#how-to-reduce-per-thread-register-usage)),
+- reduce shared memory usage, (not covered in this blog),
+- tuning your launch configuration, (straighforward from the ncu graphs shown in Figure 16).
   
-I will only cover the first item in depth, as my experience with [launch_bounds](https://docs.Nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=launch%2520bounds#launch-bounds) is limited, and I decided not to talk too much about shared memory in this blog. I still briefly mention it in the "[How to reduce per thread register usage](#how-to-reduce-per-thread-register-usage)" section.
-
 #### Why improving occupancy: latency hiding
 
 The reason why high occupancy is important is that is enables *"latency hiding"*. As explained in [Bob Crovella's 3rd lecture](https://www.youtube.com/watch?v=cXpTDKjjKZE&list=PL6RdenZrxrw-zNX7uuGppWETdxt_JxdMj&index=3), having multiple active warps allows to not waste clock cycles:
@@ -628,14 +632,20 @@ They provide a very accurate prediction of how would the occupancy of your kerne
 We can see that in our case, we can barely improve the occupancy by changing the block size / shared memory usage, but if we are able to move the register usage to the left, we can expect significant progress. In general, the plot can give you a very clear signal that you should change your block-size, which is straightforward to do.
 
 ### How to reduce per-thread register usage
+
+Here are some suggestions to reduce per-thread register usage. Take a look at them and see if they apply to your case. Don't fall in the occupancy trap ! I classified them by :
+
+- Safe: always beneficial.
+- Unsafe: can constitute an example of falling into the occupancy trap. Should be applied under specific conditions.
+
 #### Re-order operations?
 In my limited experience, I have found no success in re-ordering operations within a kernel to optimize occupancy. In all the case that I saw, I was unable to be smarter than `nvcc` in my reordering. When you “manually” reorder source-level operations, most of the time `nvcc` will just re-schedule them back to an equivalent order it thinks is best. That’s why you usually don’t see improvements. My guess is that the compiler builds some sort of [direct acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) from the instruction dependency, and solves a balance between ILP and register usage. But I might be very wrong! Instead, to get real gains the only options is to really change the operations you are doing.
 
-#### Use `Kokkos>=5.1.0`
+#### Safe: Use `Kokkos>=5.1.0`
 
 Prior to the release `5.1.0`, Kokkos's parallel iterator `Kokkos::MDRangePolicy` had several issues, including an over-use of registers. They have been fixed in Release `5.1.0` by [the CExA project](https://cexa-project.org/) team, so stick with a recent version. See more detail in  the [5.1.0 changelog](https://github.com/kokkos/kokkos/issues/8595).
 
-#### Template away heavy branches
+#### Safe: Template away heavy branches
 Now, let's look at [sample-7.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-7.cpp) where we added a runtime variable determining if we want to perform an heavy operation in the kernel:
 
 ```c++
@@ -705,9 +715,21 @@ if (expensive_option){
 ```
 This reduces the register usage to 24 (again, this is huge because I pick the example, but the goal is to show you the principles). The achieved occupancy is bumped from 12% to 77%, reducing the runtime from 26.77 to 9.74ms (-63%), basically what `ncu` predicted is the "[Profiler Diagnosis](#profiler-diagnosis_4)" section.
 
-#### Force register spilling
+#### Safe: Store math function results into registers
 
-By playing with CUDA's [\__launch_bounds__](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds), or equivalently, Kokkos's [LaunchBounds](https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies), you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory. This can constitute a prime example of falling into the occupancy trap!
+Divisions, sins and cosines cost a lot of cycles but also registers. By saving the results of such operation in register variables, you might be able to reducde the register high watermark of the kernel.
+
+#### Unsafe: Split your kernel
+
+**If you kernel hits significantly less than 50% of SOL on either memory or compute because of a low occupancy**, you will probably improve the performance by splitting it (maybe per direction, or per "physics"). Indeed, accessing the data twice, but more than twice as fast is faster overall. If your original kernel is hitting more than 50% of SOL, you will experience a slower runtime.
+
+#### Unsafe: Switch to lower precision arithmetics
+
+**If you are okay with lower precision numbers**, they use less registers.
+
+#### Unsafe: Force register spilling
+
+By playing with CUDA's [\__launch_bounds__](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds), or equivalently, Kokkos's [LaunchBounds](https://kokkos.org/kokkos-core-wiki/API/core/Execution-Policies.html#common-arguments-for-all-execution-policies), you can force the compiler to spill registers and maximize occupancy. In my limited experience, this rarely yields performance gains as it increases accesses into slow memory. 
 
 **Note:** Since CUDA 13.0, you can [limit spilling to L1/shared-memory](https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/).
 
@@ -738,10 +760,12 @@ If applicable, you should consider using [tensor cores operations](https://devel
 ### A few basic compute mistakes
 - Use `FMA` instead of `+, *`:
     - a FP32/FP64 `FMA` is the same cost as a single addition or a single multiplication. So try to fuse them! Note: You can tell `nvcc` to do the fusing for you using the compile option `--fmad`. **Warning** This may lead to different results in floating point arithmetics: doing a `+` followed by a `*` is not bitwise equivalent to a `FMA`.
-- Avoid `/`:
-    - Divisions are expensive, and probably rely on some kind of iterative process, requiring several `FMA`'s. Try refactoring your math to minimize them, and if you spot that your kernel involves several divisions by the same number, compute the inverse once `double inverse = 1.0/number`, and multiply by `inverse` instead.
+- Avoid expensive functions:
+    - Divisions, sin and cos are expensive, and probably rely on some kind of iterative process, requiring several `FMA`'s. Try refactoring your math to minimize them, and store results in registers instead of of re-computing them.
 - Do not accidentally use doubles:
     - If you work with FP32 numbers, be careful when using hard coded floating point numbers. `0.0`, `3.0`are FP64 number. If you do operations on them, it will involve the FP64 pipelines. Instead, use e.g. `0.0f`.
+- Do not use scalar `int8`, `int16`:
+    - Using lower bits integers might look like a good idea as they should use less memory. However, GPUs do not have scalar (non tensor) hardware units / SASS instruction for these types. Therefore, manipulating such ints implies converting them into `int32`, performing the math and converting back to lower ints. This adds instructions as well as register usage. 
 - Int math can be a bottleneck:
     - If your kernel involves a lot of not unrolled loop, the integer pipeline can be heavily utilized and become a bottleneck. We typically do not think about this as we only talk about the FP32 and FP64 throughput, but it can happen. To spot this, look for:
         - a lot of `FMA` in the compute workload analysis section,  
@@ -781,6 +805,10 @@ I force the thread divergence with the condition `if ( i%32 < 16 )`. The first h
 **Figure 22:** Thread divergence warning in the Warp State Statistics section of [sample-8.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-8.ncu-rep).
 
 In [sample-8-fixed.cpp](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/sample-8-fixed.cpp), I removed the thread divergence by replacing the condition by `if ( i%64 < 32 )`. As a result, even warps perform the simple sum, while odd warps will perform `cosh` and `sinh` evaluations, completely removing the intra-warp divergence. One can open [sample-8-fixed.ncu-rep](https://github.com/rbourgeois33/rbourgeois33.github.io/blob/main/code-sample/ncu-reports/sample-8-fixed.ncu-rep)) and notice the -21% speedup.
+
+In `ncu` "source view", you can also naviguate de sources by divergent branches, and find the highest contributors to the divergence:
+
+![alt text](image-36.png)
 
 **Note:** The operation of the base and the fixed versions differ. I chose these sample codes in order to show you where to look at in the profiler to spot this specific issue. In generality, if applicable, consider re-ordering you data / algorithm to avoid the need for intra-thread divergence.
 
